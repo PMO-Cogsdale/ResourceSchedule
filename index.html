@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232c7a6e'/%3E%3C!-- calendar grid --%3E%3Crect x='5' y='10' width='22' height='17' rx='2' fill='none' stroke='white' stroke-width='2'/%3E%3Cline x1='5' y1='15' x2='27' y2='15' stroke='white' stroke-width='2'/%3E%3Cline x1='11' y1='7' x2='11' y2='13' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='21' y1='7' x2='21' y2='13' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C!-- people dots --%3E%3Ccircle cx='10' cy='20' r='1.5' fill='white'/%3E%3Ccircle cx='16' cy='20' r='1.5' fill='white'/%3E%3Ccircle cx='22' cy='20' r='1.5' fill='white'/%3E%3Ccircle cx='10' cy='24' r='1.5' fill='white'/%3E%3Ccircle cx='16' cy='24' r='1.5' fill='white'/%3E%3C/svg%3E">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resource Load Dashboard</title>
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface2: #f5f7fa;
+    --border: #dde1ea;
+    --text: #1a2035;
+    --text-muted: #6b7394;
+    --text-dim: #bcc2d4;
+    --accent: #2c7a6e;
+    --accent-light: #e8f4f2;
+    --ok: #1a8a5a;
+    --warn: #b87000;
+    --over: #c0273f;
+    --cell-w: 48px;
+    --row-h: 48px;
+    --gap: 3px;
+    --name-w: 165px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: Arial, sans-serif; min-height: 100vh; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 18px 36px 14px;
+    border-bottom: 2px solid var(--border);
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; gap: 24px; position: relative; }
+  .header-left { display: flex; align-items: center; gap: 22px; }
+  .logo-img { height: 44px; width: auto; }
+  .logo-divider { width: 1px; height: 38px; background: var(--border); }
+  .title-block h1 { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
+  .title-block p { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10px; padding: 3px 9px; border-radius: 4px; margin-top: 4px;
+    background: #eef6f5; border: 1px solid #c5deda; color: var(--accent);
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+  /* ── LEGEND + UPLOAD ROW ── */
+  .header-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; flex-wrap: wrap; gap: 10px; }
+  .legend { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+  .leg-dot { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+  .upload-area { display: flex; align-items: flex-end; gap: 10px; }
+  .upload-btn {
+    background: var(--accent); color: #fff; border: none;
+    padding: 7px 15px; border-radius: 6px; font-size: 12px; font-weight: 700;
+    cursor: pointer; font-family: Arial, sans-serif; transition: opacity .15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .upload-btn:hover { opacity: .85; }
+  #file-input { display: none; }
+  .refresh-status { font-size: 11px; color: var(--text-muted); }
+
+  /* ── TABS ── */
+  /* ── VIEW TOGGLE ── */
+  .view-toggle { display: flex; background: #f0f2f5; border-radius: 8px; padding: 3px; gap: 2px; }
+  .view-toggle .tab {
+    padding: 7px 18px; border-radius: 6px; font-size: 13px; font-weight: 700;
+    cursor: pointer; color: var(--text-muted); border: none; background: transparent;
+    transition: all .15s; user-select: none; white-space: nowrap;
+  }
+  .view-toggle .tab:hover { color: var(--text); }
+  .view-toggle .tab.active { background: #ffffff; color: var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+
+  /* ── TOOLBAR ── */
+  .toolbar { padding: 12px 36px; display: flex; align-items: center; gap: 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .toolbar label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; }
+  select {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 12px; border-radius: 6px; font-size: 13px; font-family: Arial, sans-serif;
+    cursor: pointer; outline: none; min-width: 240px; max-width: 560px;
+    transition: border-color .15s;
+  }
+  select:hover, select:focus { border-color: var(--accent); }
+
+  /* ── MAIN CONTENT ── */
+  .content { padding: 22px 36px; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── HEATMAP TABLE ── */
+  .heatmap-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,.06); background: #eff1f5; padding: var(--gap); }
+  .heatmap-table { border-collapse: separate; border-spacing: var(--gap); width: max-content; min-width: 100%; }
+  .heatmap-table th, .heatmap-table td { padding: 0; border: none; background: transparent; }
+
+  /* Header row */
+  .heatmap-table thead th {
+    background: transparent;
+    font-size: 13px; font-family: Arial, sans-serif; font-weight: 700;
+    color: #444c6a; padding: 4px 0; text-align: center; white-space: nowrap;
+    height: 40px; vertical-align: middle;
+  }
+  .heatmap-table thead th.name-col {
+    width: var(--name-w); min-width: var(--name-w);
+    text-align: left; padding: 10px 14px; font-size: 11px; color: var(--text-muted);
+    position: sticky; left: 0; z-index: 10; background: transparent;
+  }
+
+  /* Resource name cell */
+  .resource-name-cell {
+    font-size: 13px; font-weight: 700; white-space: nowrap; padding: 0 14px;
+    width: var(--name-w); min-width: var(--name-w);
+    position: sticky; left: 0; z-index: 5;
+    background: #ffffff; height: var(--row-h); vertical-align: middle; border-radius: 6px;
+    border-right: 2px solid var(--border) !important;
+    color: var(--text);
+  }
+
+  /* Hour cells */
+  .hour-cell {
+    width: var(--cell-w); min-width: var(--cell-w); max-width: var(--cell-w);
+    height: var(--row-h); min-height: var(--row-h); max-height: var(--row-h);
+    text-align: center; vertical-align: middle;
+    font-size: 11px; font-family: Arial, sans-serif; font-weight: 700;
+    cursor: pointer; transition: filter .1s; position: relative;
+    padding: 0; overflow: hidden;
+  }
+  .cell-inner {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: var(--cell-w); height: var(--row-h);
+    border-radius: 6px;
+  }
+  .hour-cell:hover .cell-inner { filter: brightness(.92); }
+  .hour-cell { background: transparent !important; }
+  .hour-cell .cell-inner.zero { background: #ffffff; }
+  .hour-cell .cell-inner.over { background: #ffd0d8; color: #b8001e; }
+  .hour-cell .cell-inner.pto  { background: #b0b4c0; color: #ffffff; }
+
+  /* Resource rows */
+  .resource-row td { background: transparent; }
+
+
+
+  /* ── TOOLTIP ── */
+  .tooltip {
+    position: fixed; display: none; background: #ffffff; border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; font-size: 12px; z-index: 1000;
+    max-width: 340px; pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,.14);
+    font-family: Arial, sans-serif;
+  }
+  .tooltip.visible { display: block; }
+  .tooltip-name { font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--text); }
+  .tooltip-week { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .3px; }
+  .tooltip-total { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+  .tooltip-total.ok   { color: var(--ok); }
+  .tooltip-total.warn { color: var(--warn); }
+  .tooltip-total.over { color: var(--over); }
+  .tooltip-total.pto-label { color: #555; font-style: italic; }
+  .tooltip-projects { border-top: 1px solid var(--border); padding-top: 8px; max-height: 200px; overflow-y: auto; }
+  .tooltip-proj-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+  .tooltip-proj-row span:last-child { font-size: 11px; flex-shrink: 0; color: var(--text); font-weight: 700; }
+  .tooltip-proj-name { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; color: var(--text-muted); }
+
+  /* ── ALERT BANNER ── */
+  .alert-banner {
+    background: #fff0f2; border: 1px solid #f5b8c0; border-radius: 8px;
+    padding: 10px 16px; margin-bottom: 18px; display: none;
+    color: var(--over); font-size: 13px;
+  }
+  .alert-banner.show { display: block; }
+
+  /* ── LOADING OVERLAY ── */
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(240,242,245,.92); display: none;
+    align-items: center; justify-content: center; z-index: 2000; flex-direction: column; gap: 16px;
+  }
+  .loading-overlay.show { display: flex; }
+  .loading-spinner {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text-muted); }
+
+  /* ── SCROLLBAR ── */
+  /* ── PROJ CHECKBOX DROPDOWN ── */
+  .proj-check-item { display:flex; align-items:center; gap:10px; padding:9px 14px; cursor:pointer; font-size:13px; color:var(--text); transition:background .1s; }
+  .proj-check-item:hover { background:#f0f8f6; }
+  .proj-check-item input[type=checkbox] { width:16px; height:16px; accent-color:var(--accent); cursor:pointer; flex-shrink:0; }
+  .proj-check-item.disabled { opacity:.45; cursor:not-allowed; }
+  .proj-section-label { padding:8px 14px 4px; font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; border-top:1px solid var(--border); }
+  .proj-section-label:first-child { border-top:none; }
+
+  /* ── PROJECT HEATMAP SECTION ── */
+  .proj-section { margin-bottom: 18px; }
+  .proj-section-title { font-size:12px; font-weight:700; color:var(--accent); padding:8px 0 6px; text-transform:uppercase; letter-spacing:.3px; }
+
+  /* ── GITHUB SETTINGS MODAL ── */
+  .gh-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 3000;
+    display: none; align-items: center; justify-content: center;
+  }
+  .gh-modal-overlay.show { display: flex; }
+  .gh-modal {
+    background: #fff; border-radius: 12px; padding: 28px 32px; width: 480px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.2); font-family: Arial, sans-serif;
+  }
+  .gh-modal h2 { font-size: 16px; font-weight: 700; color: #1a2035; margin-bottom: 6px; }
+  .gh-modal p { font-size: 12px; color: #6b7394; margin-bottom: 20px; line-height: 1.5; }
+  .gh-modal label { font-size: 11px; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: 5px; }
+  .gh-modal input {
+    width: 100%; padding: 8px 12px; border: 1px solid #dde1ea; border-radius: 6px;
+    font-size: 13px; font-family: Arial, sans-serif; margin-bottom: 16px; outline: none;
+  }
+  .gh-modal input:focus { border-color: var(--accent); }
+  .gh-modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+  .gh-btn { padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; font-family: Arial, sans-serif; }
+  .gh-btn.primary { background: var(--accent); color: #fff; }
+  .gh-btn.primary:hover { opacity: .85; }
+  .gh-btn.secondary { background: #f0f2f5; color: #444; }
+  .gh-btn.secondary:hover { background: #e0e2e8; }
+  .gh-status { font-size: 11px; margin-top: 10px; min-height: 16px; }
+  .gh-status.ok { color: #1a8a5a; }
+  .gh-status.err { color: #c0273f; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #b0b8cc; }
+
+  /* ── RESOURCE FILTER BAR ── */
+  .resource-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 12px 36px; background: #ffffff; border-bottom: 1px solid var(--border);
+  }
+  .res-pill {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    cursor: pointer; border: 2px solid var(--border); background: #f5f7fa; color: var(--text-muted);
+    transition: all .15s; white-space: nowrap; user-select: none;
+  }
+  .res-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .res-pill.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  .res-pill.all-pill { background: var(--surface2); }
+  .res-pill.all-pill.active { background: var(--accent); color: #fff; }
+
+  /* ── TABS ── */
+  /* ── VIEW TOGGLE ── */
+  .view-toggle { display: flex; background: #f0f2f5; border-radius: 8px; padding: 3px; gap: 2px; }
+  .view-toggle .tab {
+    padding: 7px 18px; border-radius: 6px; font-size: 13px; font-weight: 700;
+    cursor: pointer; color: var(--text-muted); border: none; background: transparent;
+    transition: all .15s; user-select: none; white-space: nowrap;
+  }
+  .view-toggle .tab:hover { color: var(--text); }
+  .view-toggle .tab.active { background: #ffffff; color: var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+
+  /* ── DRILL-DOWN SECTION ── */
+  /* ── DRILL-DOWN ── */
+  .drilldown-wrap { margin-top: 12px; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .drilldown-scroll { overflow-x: auto; background: #ffffff; }
+  .dd-table { width: max-content; min-width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; background: #ffffff; color: #000000; }
+  .dd-table th { background: #f5f7fa; font-size: 11px; font-weight: 700; color: #000000; text-transform: uppercase; letter-spacing: .4px; padding: 10px 14px; text-align: left; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  .dd-table th.wk { text-align: center; width: var(--cell-w); min-width: var(--cell-w); max-width: var(--cell-w); padding: 0; }
+  .dd-table td { padding: 8px 14px; font-size: 12px; border-bottom: 1px solid #f0f2f5; white-space: nowrap; vertical-align: middle; background: #ffffff; color: #000000; }
+  .dd-table td.wk { text-align: center; font-size: 12px; color: #000000; font-weight: 600; padding: 8px 0; background: #ffffff; width: var(--cell-w); min-width: var(--cell-w); max-width: var(--cell-w); }
+  .dd-table td.wk.zero { color: #999; font-weight: 400; }
+  .dd-table tr.proj-row td { background: #f8fffe; font-weight: 700; font-size: 13px; color: #000000; border-top: 2px solid #e0e0e0; }
+  .dd-table tr.proj-row td.wk { color: #000000; background: #f8fffe; width: var(--cell-w); min-width: var(--cell-w); max-width: var(--cell-w); padding: 8px 0; text-align: center; }
+  .dd-table tr.task-row td { background: #ffffff; font-size: 12px; color: #000000; }
+  .dd-table tr.task-row td.wk { color: #000000; font-weight: 400; background: #ffffff; }
+  .dd-table tr.task-row { display: none; }
+  .dd-table tr.task-row.visible { display: table-row; }
+
+  .proj-row td:first-child { cursor: pointer; }
+  .proj-row:hover td { background: #f0f0f0 !important; }
+  .row-arrow { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; margin-right: 6px; font-size: 11px; color: #2c7a6e; transition: transform .2s; vertical-align: middle; }
+  .row-arrow.open { transform: rotate(90deg); }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">Processing Excel file…</div>
+</div>
+
+<div class="tooltip" id="tooltip">
+  <div class="tooltip-name" id="tt-name"></div>
+  <div class="tooltip-week" id="tt-week"></div>
+  <div class="tooltip-total" id="tt-total"></div>
+  <div class="tooltip-projects" id="tt-projects"></div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <!-- VIEW TOGGLE — absolutely centered -->
+    <div class="view-toggle" style="position:absolute;left:50%;transform:translateX(-50%);">
+      <div class="tab active" onclick="switchTab('all')">By Resource</div>
+      <div class="tab" onclick="switchTab('project')">By Project</div>
+    </div>
+    <div class="header-left">
+      <img class="logo-img" src="data:image/png;base64,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" alt="Cogsdale">
+      <div class="logo-divider"></div>
+      <div class="title-block">
+        <h1>Resource Load Dashboard <span style="font-size:13px;font-weight:400;color:var(--text-muted);">v1.8</span></h1>
+        <span class="badge" style="display:inline-flex;margin-top:6px;"><span class="badge-dot"></span><span id="data-badge">Updated on: Sunday, June 7, 2026 9:11:17 AM</span></span>
+      </div>
+
+    </div>
+    <div class="upload-area" style="flex-direction:column;align-items:flex-end;gap:6px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="upload-btn" onclick="document.getElementById('file-input').click()">↑ Upload Schedule Report</button>
+        <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFileUpload(event)">
+        <button class="upload-btn" style="background:#6b7394;" onclick="autoFetchSchedule()" title="Re-fetch schedule.xlsx from server">⟳ Refresh Data</button>
+        <button class="upload-btn" style="background:#f0f2f5;color:#444;" onclick="openGhModal()" title="GitHub auto-save settings">⚙</button>
+      </div>
+      <span class="refresh-status" id="refresh-status"></span>
+      <div class="legend" style="justify-content:flex-end;">
+        <div class="leg"><div class="leg-dot" style="background:#ffffff;border:1px solid #ccc"></div> 0 hrs</div>
+        <div class="leg"><div class="leg-dot" style="background:#c8f0d8"></div> 1 hr</div>
+        <div class="leg"><div class="leg-dot" style="background:#7acc9e"></div> ~22 hrs</div>
+        <div class="leg"><div class="leg-dot" style="background:#1a6b3a"></div> 42 hrs</div>
+        <div class="leg"><div class="leg-dot" style="background:#ffd0d8"></div> &gt;42 hrs ⚠</div>
+        <div class="leg"><div class="leg-dot" style="background:#b0b4c0"></div> Full week PTO</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RESOURCE FILTER BAR -->
+<div class="resource-bar" id="resource-bar"></div>
+
+<div class="toolbar" id="toolbar-row" style="display:none;">
+  <div id="project-selector" style="display:flex; align-items:center; gap:12px; width:100%;">
+    <label>PROJECT</label>
+    <div style="position:relative;" id="proj-dropdown-wrap">
+      <button id="proj-dropdown-btn" onclick="toggleProjDropdown()" style="
+        min-width:300px; max-width:560px; padding:7px 36px 7px 12px; border-radius:6px;
+        border:1px solid var(--border); background:var(--surface2); color:var(--text);
+        font-size:13px; font-family:Arial,sans-serif; cursor:pointer; text-align:left;
+        position:relative; outline:none;">
+        <span id="proj-btn-label">Select up to 5 projects…</span>
+        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-muted);">▼</span>
+      </button>
+      <div id="proj-dropdown-list" style="
+        display:none; position:absolute; top:calc(100% + 4px); left:0; z-index:200;
+        background:#fff; border:1px solid var(--border); border-radius:8px;
+        box-shadow:0 8px 24px rgba(0,0,0,.12); min-width:400px; max-width:600px;
+        max-height:320px; overflow-y:auto;">
+      </div>
+    </div>
+    <span id="proj-count-badge" style="font-size:11px;color:var(--text-muted);"></span>
+  </div>
+</div>
+
+<div class="content">
+  <div class="view active" id="view-all">
+    <div class="heatmap-wrap">
+      <table class="heatmap-table" id="heatmap-all"></table>
+    </div>
+    <!-- single-resource drill-down -->
+    <div id="drilldown-section" style="display:none;">
+      <div class="drilldown-wrap">
+        <div class="drilldown-scroll"><table class="dd-table" id="drilldown-table"></table></div>
+      </div>
+    </div>
+  </div>
+  <div class="view" id="view-project">
+    <div class="heatmap-wrap">
+      <table class="heatmap-table" id="heatmap-proj"></table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ HELPERS ══
+function fmtWeekLabel(raw) {
+  const start = raw.split(' - ')[0].trim().split(' ')[0];
+  const parts = start.split('/');
+  if (parts.length < 2) return raw;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[parseInt(parts[0],10)-1] + ' ' + parseInt(parts[1],10);
+}
+
+// Abbreviate: strip QUO number, keep "Customer - Project Description"
+function abbreviateProject(proj) {
+  // Remove QUO-XXXXX from the string
+  let s = proj.replace(/\s*-?\s*QUO-[\w]+v?\d*/gi, '').trim();
+  // Remove leading/trailing dashes
+  s = s.replace(/^\s*[-–]\s*|\s*[-–]\s*$/g, '').trim();
+  // Clean up double spaces or double dashes
+  s = s.replace(/\s*-\s*-\s*/g, ' - ').trim();
+
+  // Customer name abbreviation map
+  const custMap = [
+    [/city of griffin/i,                          'Griffin'],
+    [/city of fredericton/i,                      'Fredericton'],
+    [/city of salisbury/i,                        'Salisbury'],
+    [/city of medicine hat/i,                     'Medicine Hat'],
+    [/florida keys aqueduct authority/i,           'FKAA'],
+    [/fort pierce utilities authority/i,           'Fort Pierce'],
+    [/hingham municipal lighting plant/i,          'Hingham'],
+    [/lake cities municipal utility authority/i,   'LCMUA'],
+    [/new smyrna beach utilities/i,               'New Smyrna Beach'],
+    [/new smyrna beach/i,                         'New Smyrna Beach'],
+    [/provident energy management inc/i,           'Provident Energy'],
+    [/provident energy management/i,              'Provident Energy'],
+    [/rockdale county government/i,               'Rockdale'],
+    [/sewerage and water board of new orleans/i,  'New Orleans'],
+    [/taunton/i,                                  'Taunton'],
+    [/water authority.*cayman/i,                  'Cayman'],
+    [/water authority[–-].*cayman/i,              'Cayman'],
+    [/antigua public utilities/i,                 'Antigua'],
+    [/z-cogsdale corporation/i,                   'Internal'],
+    [/lcmua/i,                                    'LCMUA'],
+  ];
+
+  for (const [re, abbr] of custMap) {
+    if (re.test(s)) {
+      // Replace customer name part with abbreviation; keep the rest (project description)
+      s = s.replace(re, abbr);
+      break;
+    }
+  }
+  // Clean up any leftover " -  - " or trailing/leading dashes
+  s = s.replace(/\s*-\s*-\s*/g, ' - ').replace(/^\s*[-–]\s*|\s*[-–]\s*$/g, '').trim();
+  return s || proj;
+}
+
+function cellClass(h, ptoHrs) {
+  if (ptoHrs && ptoHrs > 35) return 'pto';
+  if (h <= 0) return 'zero';
+  if (h > 42) return 'over';
+  return 'green';
+}
+function greenColor(h) {
+  // 1–45 mapped from light green (#c8f0d8) to dark green (#1a6b3a)
+  const t = Math.min(Math.max((h - 1) / 41, 0), 1);
+  const r = Math.round(200 - t * (200 - 26));
+  const g = Math.round(240 - t * (240 - 107));
+  const b = Math.round(216 - t * (216 - 58));
+  // text: dark green for light bg, white for dark bg
+  const textColor = t > 0.55 ? '#ffffff' : '#1a5c35';
+  return { bg: 'rgb(' + r + ',' + g + ',' + b + ')', text: textColor };
+}
+// Returns combined hours of the two time-off tasks for a resource/week
+function getPtoHours(resource, weekIdx) {
+  const ptoData = DATA.ptoHours || {};
+  const weeks = ptoData[resource];
+  return weeks ? (weeks[weekIdx] || 0) : 0;
+}
+function ptoDays(ptoHrs) {
+  return Math.round(ptoHrs / 7.5);
+}
+function fmt(h) { return ''; }
+function fmtCell(h, ptoHrs, cls) {
+  const days = ptoHrs ? Math.round(ptoHrs / 7.5) : 0;
+  let inner = '';
+  if (days > 0) {
+    inner = '<span style="font-size:12px;font-weight:700;line-height:1.3">PTO</span><span style="font-size:12px;font-weight:700;line-height:1.3">' + days + 'd</span>';
+  }
+  let style = '';
+  if (cls === 'green') {
+    const gc = greenColor(h);
+    style = ' style="background:' + gc.bg + ';color:' + gc.text + '"';
+  }
+  return '<div class="cell-inner ' + cls + '"' + style + '>' + inner + '</div>';
+}
+
+// ══ EMBEDDED DATA ══
+let DATA = {"weekLabels":["06/08/26 - 06/14/26","06/15/26 - 06/21/26","06/22/26 - 06/28/26","06/29/26 - 07/05/26","07/06/26 - 07/12/26","07/13/26 - 07/19/26","07/20/26 - 07/26/26","07/27/26 - 08/02/26","08/03/26 - 08/09/26","08/10/26 - 08/16/26","08/17/26 - 08/23/26","08/24/26 - 08/30/26","08/31/26 - 09/06/26","09/07/26 - 09/13/26","09/14/26 - 09/20/26","09/21/26 - 09/27/26","09/28/26 - 10/04/26","10/05/26 - 10/11/26","10/12/26 - 10/18/26","10/19/26 - 10/25/26","10/26/26 - 11/01/26","11/02/26 - 11/08/26","11/09/26 - 11/15/26","11/16/26 - 11/22/26","11/23/26 - 11/29/26","11/30/26 - 12/06/26","12/07/26 - 12/13/26","12/14/26 - 12/20/26","12/21/26 - 12/27/26","12/28/26 - 01/03/27"],"reportMeta":"Generated on behalf of Ali Raoofi on Sunday, June 7, 2026 9:11:17 AM","ptoHours":{"Allan Lapp": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Hammad Saleem": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Jason O'Brien": [0.0, 0.0, 0.0, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.57, 1.26], "Lauren Russo": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 3.48], "Marc Van Niekerk": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 30.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Nicole Aubry": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Norma Mayhew": [0.0, 0.0, 0.0, 0.0, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.15], "Therese Antonini": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.63]},"maxHours":42,"resources":["Allan Lapp","Hammad Saleem","Jason O'Brien","Jean Phillips","Lauren Russo","Marc Van Niekerk","Nicole Aubry","Norma Mayhew","Therese Antonini"],"resourceHours":{"Allan Lapp":[43.5,38.5,19.22,5.47,6.01,4.47,4.47,4.47,4.47,8.47,4.47,4.47,4.47,4.47,4.47,4.47,4.47,14.47,12.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,24.17,22.8,16.43,12.91],"Hammad Saleem":[9.27,7.6,7.6,0.0,0.0,0.0,0.0,0.0,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,30.0],"Jason O'Brien":[58.98,92.3,45.47,44.58,28.36,33.36,21.43,29.64,28.37,23.97,95.89,140.32,79.89,101.55,89.55,65.92,77.92,96.67,61.19,50.52,62.52,19.72,18.52,18.52,18.52,18.52,19.63,14.43,36.63,15.31],"Jean Phillips":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Lauren Russo":[42.7,68.3,76.18,55.29,50.22,51.55,45.73,53.11,51.37,51.37,51.37,91.57,61.82,69.32,69.32,59.94,67.44,70.54,60.03,60.03,60.03,45.03,45.03,45.03,45.03,44.73,44.73,44.73,44.73,35.78],"Marc Van Niekerk":[15.67,64.0,15.5,8.5,32.44,18.44,13.0,7.5,32.0,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5],"Nicole Aubry":[47.41,29.77,32.11,17.49,27.5,28.17,57.2,75.56,70.52,66.56,38.66,19.16,25.23,26.89,26.89,15.85,15.85,15.85,13.19,12.52,24.52,16.72,20.52,20.52,20.52,20.52,20.52,15.32,37.52,17.52],"Norma Mayhew":[28.73,21.55,20.47,17.18,10.63,12.46,26.46,11.33,10.83,5.83,19.03,12.36,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,25.26,23.89,17.52,13.78],"Therese Antonini":[23.15,0.65,1.75,0.83,4.17,0.0,0.79,0.79,0.79,0.79,0.79,0.79,5.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,21.33,19.96,13.59,10.63]},"projects":["Antigua Public Utilities - QUO-06540 - Collections Setup - Additional Assistance","City of Fredericton - QUO-06858 - Bill Template Redesign using Template 25","City of Fredericton - QUO-16102 - Customer Communications Setup/Implementation","City of Griffin - QUO-16064 - NexusCIS Implementation","City of Griffin - QUO-16076 - AMI Discovery/Requirement Definition/General Assistance","City of Griffin - QUO-16119 - Mass Removal of Yard Waste Connections","City of Medicine Hat - QUO-16092 - Business Process Review and Nexus CIS Readiness","City of Salisbury - QUO-16059 - NexusCIS Implementation","Florida Keys Aqueduct Authority - QUO-16032 - NexusCIS Implementation","Fort Pierce Utilities Authority - QUO-16029 - NexusCIS Implementation","Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing","LCMUA - CIS / SilverBlaze Implementation","LCMUA - FIS / CMG Implementation","New Smyrna Beach Utilities - QUO-06941v2 - AMI Integration and Implementation","Provident Energy Management Inc - NexusCIS Implementation","Provident Energy Management Inc - QUO-19012 - PowerStream Acquisition \u2013 Discovery and Data Mapping Sessions","Rockdale County Government - QUO-06693 - SilverBlaze Customer Portal","Rockdale County Government - QUO-16125 - Location Extract","Sewerage and Water Board of New Orleans - QUO-16070v2 - Support Hrs for General Assistance","Taunton CIS Implementation","Water Authority \u2013 Cayman - QUO-16063 - AMI Discovery/Requirement Definition/General Assistance"],"projectData":{"Antigua Public Utilities - QUO-06540 - Collections Setup - Additional Assistance":{"Jason O'Brien":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Lauren Russo":[0.0,0.0,0.0,0.0,0.0,0.0,0.04,0.04,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"City of Fredericton - QUO-06858 - Bill Template Redesign using Template 25":{"Allan Lapp":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Jason O'Brien":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Therese Antonini":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"City of Fredericton - QUO-16102 - Customer Communications Setup/Implementation":{"Jason O'Brien":[0.27,0.27,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"City of Griffin - QUO-16064 - NexusCIS Implementation":{"Jason O'Brien":[0.0,0.0,24.0,4.0,0.0,0.0,0.0,10.63,10.63,10.63,10.63,10.63,10.63,13.13,13.13,7.5,15.75,32.0,25.0,25.0,25.0,5.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Lauren Russo":[1.6,1.6,1.6,1.6,0.0,0.0,0.0,9.38,9.38,9.38,9.38,9.38,9.38,9.38,9.38,0.0,3.75,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Therese Antonini":[20.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"City of Griffin - QUO-16076 - AMI Discovery/Requirement Definition/General Assistance":{"Allan Lapp":[10.0,10.0,10.0,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Jason O'Brien":[0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Lauren Russo":[0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"City of Griffin - QUO-16119 - Mass Removal of Yard Waste Connections":{"Allan Lapp":[15.0,15.0,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Jason O'Brien":[0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"City of Medicine Hat - QUO-16092 - Business Process Review and Nexus CIS Readiness":{"Jason O'Brien":[2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,1.6],"Lauren Russo":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"City of Salisbury - QUO-16059 - NexusCIS Implementation":{"Jason O'Brien":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.4,3.0,3.0,0.6,6.67,8.33,8.33,8.33,8.33,8.33,5.67,5.0,17.0,9.2,13.0,13.0,13.0,13.0,13.0,7.8,30.0,10.0],"Lauren Russo":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Nicole Aubry":[0.0,8.5,1.0,1.0,11.04,11.04,11.04,11.04,13.44,14.04,14.04,11.64,17.71,19.37,19.37,8.33,8.33,8.33,5.67,5.0,17.0,9.2,13.0,13.0,13.0,13.0,13.0,7.8,30.0,10.0]},"Florida Keys Aqueduct Authority - QUO-16032 - NexusCIS Implementation":{"Jason O'Brien":[3.0,12.0,7.0,7.0,5.0,5.0,5.0,5.0,4.0,4.0,4.0,41.0,11.25,18.75,18.75,18.75,22.5,25.0,15.0,15.0,15.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Lauren Russo":[11.0,36.8,11.8,11.8,1.8,1.8,1.8,1.8,1.1,1.1,1.1,41.3,11.55,19.05,19.05,19.05,22.8,25.3,15.3,15.3,15.3,0.3,0.3,0.3,0.3,0.0,0.0,0.0,0.0,0.0]},"Fort Pierce Utilities Authority - QUO-16029 - NexusCIS Implementation":{"Jason O'Brien":[0.12,1.11,1.11,0.0,0.0,0.0,0.0,0.0,0.0,0.0,56.5,73.0,45.0,55.0,43.0,25.0,25.0,25.0,10.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Lauren Russo":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Nicole Aubry":[0.2,0.2,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing":{"Hammad Saleem":[1.77,0.1,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Jason O'Brien":[3.55,27.88,1.88,16.67,16.67,16.67,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Lauren Russo":[20.89,20.89,20.89,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Marc Van Niekerk":[1.67,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"LCMUA - CIS / SilverBlaze Implementation":{"Jason O'Brien":[1.0,0.0,0.0,0.0,0.0,0.0,1.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Lauren Russo":[1.0,1.0,1.0,1.0,7.53,8.86,3.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Marc Van Niekerk":[2.0,1.0,1.0,1.0,24.94,10.94,5.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Nicole Aubry":[32.18,5.63,4.74,4.74,6.53,7.2,36.84,57.0,49.56,45.0,17.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"LCMUA - FIS / CMG Implementation":{"Allan Lapp":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,4.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"New Smyrna Beach Utilities - QUO-06941v2 - AMI Integration and Implementation":{"Allan Lapp":[2.0,0.0,0.0,0.0,0.54,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"Provident Energy Management Inc - NexusCIS Implementation":{"Allan Lapp":[4.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,10.0,10.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,21.65,20.28,13.91,10.89],"Jason O'Brien":[40.0,40.0,1.0,4.67,0.67,5.67,9.0,8.34,5.67,0.67,16.09,9.42,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,1.78,1.78,1.78,1.43],"Lauren Russo":[0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Nicole Aubry":[1.0,3.0,16.0,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02],"Norma Mayhew":[21.23,14.05,12.97,9.68,7.02,8.85,22.85,7.72,7.22,2.22,15.42,8.75,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,21.65,20.28,13.91,10.89],"Therese Antonini":[0.65,0.65,1.75,0.83,4.17,0.0,0.0,0.0,0.0,0.0,0.0,0.0,5.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,20.54,19.17,12.8,10.0]},"Provident Energy Management Inc - QUO-19012 - PowerStream Acquisition \u2013 Discovery and Data Mapping Sessions":{"Marc Van Niekerk":[3.0,25.0,7.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"Rockdale County Government - QUO-06693 - SilverBlaze Customer Portal":{"Nicole Aubry":[6.0,4.41,2.27,1.82,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"Rockdale County Government - QUO-16125 - Location Extract":{"Jason O'Brien":[0.5,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Marc Van Niekerk":[1.5,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"Sewerage and Water Board of New Orleans - QUO-16070v2 - Support Hrs for General Assistance":{"Therese Antonini":[2.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"Taunton CIS Implementation":{"Jason O'Brien":[0.22,0.22,0.16,0.35,0.35,0.35,0.26,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Nicole Aubry":[0.53,0.53,0.4,2.41,2.41,2.41,1.8,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"Water Authority \u2013 Cayman - QUO-16063 - AMI Discovery/Requirement Definition/General Assistance":{"Allan Lapp":[5.0,5.0,5.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Jason O'Brien":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Lauren Russo":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]}},"resourceProjectBreakdown":{"Allan Lapp":{"City of Fredericton - QUO-06858 - Bill Template Redesign using Template 25":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Griffin - QUO-16076 - AMI Discovery/Requirement Definition/General Assistance":[10.0,10.0,10.0,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,1.25,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Griffin - QUO-16119 - Mass Removal of Yard Waste Connections":[15.0,15.0,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"LCMUA - FIS / CMG Implementation":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,4.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"New Smyrna Beach Utilities - QUO-06941v2 - AMI Integration and Implementation":[2.0,0.0,0.0,0.0,0.54,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Provident Energy Management Inc - NexusCIS Implementation":[4.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,10.0,10.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,21.65,20.28,13.91,10.89],"Water Authority \u2013 Cayman - QUO-16063 - AMI Discovery/Requirement Definition/General Assistance":[5.0,5.0,5.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)":[7.5,7.5,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.52,2.02]},"Hammad Saleem":{"Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing":[1.77,0.1,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)":[7.5,7.5,7.5,0.0,0.0,0.0,0.0,0.0,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,37.5,30.0]},"Jason O'Brien":{"Antigua Public Utilities - QUO-06540 - Collections Setup - Additional Assistance":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Fredericton - QUO-06858 - Bill Template Redesign using Template 25":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Fredericton - QUO-16102 - Customer Communications Setup/Implementation":[0.27,0.27,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Griffin - QUO-16064 - NexusCIS Implementation":[0.0,0.0,24.0,4.0,0.0,0.0,0.0,10.63,10.63,10.63,10.63,10.63,10.63,13.13,13.13,7.5,15.75,32.0,25.0,25.0,25.0,5.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Griffin - QUO-16076 - AMI Discovery/Requirement Definition/General Assistance":[0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.54,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Griffin - QUO-16119 - Mass Removal of Yard Waste Connections":[0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Medicine Hat - QUO-16092 - Business Process Review and Nexus CIS Readiness":[2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,1.6],"City of Salisbury - QUO-16059 - NexusCIS Implementation":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.4,3.0,3.0,0.6,6.67,8.33,8.33,8.33,8.33,8.33,5.67,5.0,17.0,9.2,13.0,13.0,13.0,13.0,13.0,7.8,30.0,10.0],"Florida Keys Aqueduct Authority - QUO-16032 - NexusCIS Implementation":[3.0,12.0,7.0,7.0,5.0,5.0,5.0,5.0,4.0,4.0,4.0,41.0,11.25,18.75,18.75,18.75,22.5,25.0,15.0,15.0,15.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Fort Pierce Utilities Authority - QUO-16029 - NexusCIS Implementation":[0.12,1.11,1.11,0.0,0.0,0.0,0.0,0.0,0.0,0.0,56.5,73.0,45.0,55.0,43.0,25.0,25.0,25.0,10.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing":[3.55,27.88,1.88,16.67,16.67,16.67,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"LCMUA - CIS / SilverBlaze Implementation":[1.0,0.0,0.0,0.0,0.0,0.0,1.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Provident Energy Management Inc - NexusCIS Implementation":[40.0,40.0,1.0,4.67,0.67,5.67,9.0,8.34,5.67,0.67,16.09,9.42,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,0.67,1.78,1.78,1.78,1.43],"Rockdale County Government - QUO-16125 - Location Extract":[0.5,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Taunton CIS Implementation":[0.22,0.22,0.16,0.35,0.35,0.35,0.26,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Water Authority \u2013 Cayman - QUO-16063 - AMI Discovery/Requirement Definition/General Assistance":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)":[7.5,7.5,7.5,9.07,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.85,2.28]},"Jean Phillips":{"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"Lauren Russo":{"Antigua Public Utilities - QUO-06540 - Collections Setup - Additional Assistance":[0.0,0.0,0.0,0.0,0.0,0.0,0.04,0.04,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Griffin - QUO-16064 - NexusCIS Implementation":[1.6,1.6,1.6,1.6,0.0,0.0,0.0,9.38,9.38,9.38,9.38,9.38,9.38,9.38,9.38,0.0,3.75,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Griffin - QUO-16076 - AMI Discovery/Requirement Definition/General Assistance":[0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.51,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Medicine Hat - QUO-16092 - Business Process Review and Nexus CIS Readiness":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Salisbury - QUO-16059 - NexusCIS Implementation":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Florida Keys Aqueduct Authority - QUO-16032 - NexusCIS Implementation":[11.0,36.8,11.8,11.8,1.8,1.8,1.8,1.8,1.1,1.1,1.1,41.3,11.55,19.05,19.05,19.05,22.8,25.3,15.3,15.3,15.3,0.3,0.3,0.3,0.3,0.0,0.0,0.0,0.0,0.0],"Fort Pierce Utilities Authority - QUO-16029 - NexusCIS Implementation":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing":[20.89,20.89,20.89,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"LCMUA - CIS / SilverBlaze Implementation":[1.0,1.0,1.0,1.0,7.53,8.86,3.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Provident Energy Management Inc - NexusCIS Implementation":[0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Water Authority \u2013 Cayman - QUO-16063 - AMI Discovery/Requirement Definition/General Assistance":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)":[7.5,7.5,40.38,40.38,40.38,40.38,40.38,40.38,40.38,40.38,40.38,40.38,40.38,40.38,40.38,40.38,40.38,44.73,44.73,44.73,44.73,44.73,44.73,44.73,44.73,44.73,44.73,44.73,44.73,35.78]},"Marc Van Niekerk":{"Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing":[1.67,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"LCMUA - CIS / SilverBlaze Implementation":[2.0,1.0,1.0,1.0,24.94,10.94,5.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Provident Energy Management Inc - QUO-19012 - PowerStream Acquisition \u2013 Discovery and Data Mapping Sessions":[3.0,25.0,7.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Rockdale County Government - QUO-16125 - Location Extract":[1.5,0.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)":[7.5,37.5,7.5,7.5,7.5,7.5,7.5,7.5,32.0,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5]},"Nicole Aubry":{"City of Salisbury - QUO-16059 - NexusCIS Implementation":[0.0,8.5,1.0,1.0,11.04,11.04,11.04,11.04,13.44,14.04,14.04,11.64,17.71,19.37,19.37,8.33,8.33,8.33,5.67,5.0,17.0,9.2,13.0,13.0,13.0,13.0,13.0,7.8,30.0,10.0],"Fort Pierce Utilities Authority - QUO-16029 - NexusCIS Implementation":[0.2,0.2,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"LCMUA - CIS / SilverBlaze Implementation":[32.18,5.63,4.74,4.74,6.53,7.2,36.84,57.0,49.56,45.0,17.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Provident Energy Management Inc - NexusCIS Implementation":[1.0,3.0,16.0,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.02],"Rockdale County Government - QUO-06693 - SilverBlaze Customer Portal":[6.0,4.41,2.27,1.82,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Taunton CIS Implementation":[0.53,0.53,0.4,2.41,2.41,2.41,1.8,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)":[7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5,7.5]},"Norma Mayhew":{"Provident Energy Management Inc - NexusCIS Implementation":[21.23,14.05,12.97,9.68,7.02,8.85,22.85,7.72,7.22,2.22,15.42,8.75,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,21.65,20.28,13.91,10.89],"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)":[7.5,7.5,7.5,7.5,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,3.61,2.89]},"Therese Antonini":{"City of Fredericton - QUO-06858 - Bill Template Redesign using Template 25":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"City of Griffin - QUO-16064 - NexusCIS Implementation":[20.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Provident Energy Management Inc - NexusCIS Implementation":[0.65,0.65,1.75,0.83,4.17,0.0,0.0,0.0,0.0,0.0,0.0,0.0,5.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,20.54,19.17,12.8,10.0],"Sewerage and Water Board of New Orleans - QUO-16070v2 - Support Hrs for General Assistance":[2.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)":[0.0,0.0,0.0,0.0,0.0,0.0,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.79,0.63]}}};
+
+// ══ SELECTED RESOURCE ══
+let selectedResource = 'all';
+
+function selectResource(name) {
+  selectedResource = name;
+  buildResourceBar();
+  renderAllView();
+}
+
+function buildResourceBar() {
+  const bar = document.getElementById('resource-bar');
+  bar.innerHTML = '';
+  // By Resource pill
+  const allPill = document.createElement('div');
+  allPill.className = 'res-pill all-pill' + (selectedResource === 'all' ? ' active' : '');
+  allPill.textContent = 'All Resources';
+  allPill.onclick = () => selectResource('all');
+  bar.appendChild(allPill);
+  // One pill per resource
+  DATA.resources.forEach(r => {
+    const pill = document.createElement('div');
+    pill.className = 'res-pill' + (selectedResource === r ? ' active' : '');
+    pill.dataset.res = r;
+    pill.textContent = r.split(' ')[0];
+    pill.onclick = () => selectResource(r);
+    bar.appendChild(pill);
+  });
+}
+
+
+// Track which projects are expanded in drilldown
+const ddExpanded = {};
+
+document.addEventListener('click', function(e) {
+  const cell = e.target.closest('td.proj-toggle');
+  if (!cell) return;
+  const row = cell.parentElement;
+  const idx = row.dataset.idx;
+  if (idx === undefined) return;
+  ddExpanded[idx] = !ddExpanded[idx];
+  const arrow = cell.querySelector('.row-arrow');
+  if (arrow) arrow.classList.toggle('open', !!ddExpanded[idx]);
+  const tbody = row.parentElement;
+  tbody.querySelectorAll('tr.task-row[data-idx="' + idx + '"]').forEach(function(tr) {
+    tr.style.display = ddExpanded[idx] ? 'table-row' : 'none';
+  });
+});
+
+function renderDrilldown(resource) {
+  const { weekLabels } = DATA;
+  const section = document.getElementById('drilldown-section');
+
+  const breakdown = DATA.resourceProjectBreakdown[resource] || {};
+  const projects = Object.entries(breakdown)
+    .filter(([, weeks]) => weeks.some(h => h > 0))
+    .sort((a, b) => {
+      const firstA = a[1].find(h => h > 0) || 0;
+      const firstB = b[1].find(h => h > 0) || 0;
+      return firstB - firstA;
+    });
+
+  if (projects.length === 0) { section.style.display = 'none'; return; }
+
+  const { resourceHours } = DATA;
+  const resHours = resourceHours[resource] || [];
+  const t = document.getElementById('drilldown-table');
+  // Header: heat cell on top, week label below — all in one <th>
+  let html = '<thead><tr>'
+    + '<th style="text-align:left;padding:10px 14px;min-width:280px;position:sticky;left:0;background:#f5f7fa;z-index:10;vertical-align:bottom;">PROJECT / TASK</th>';
+  weekLabels.forEach((w, wi) => {
+    const hrs = resHours[wi] || 0;
+    const pto = getPtoHours(resource, wi);
+    const cls = cellClass(hrs, pto);
+    let bg = '#ffffff', fg = '#999';
+    if (cls === 'green') { const gc = greenColor(hrs); bg = gc.bg; fg = gc.text; }
+    else if (cls === 'pto')  { bg = '#b0b4c0'; fg = '#ffffff'; }
+    else if (cls === 'over') { bg = '#ffd0d8'; fg = '#b8001e'; }
+    html += '<th class="wk" style="padding:3px 0 4px;vertical-align:bottom;background:transparent;border:none;">'
+      + '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'
+      + '<div data-res="' + resource.replace(/"/g,'&quot;') + '" data-wi="' + wi + '" onmouseenter="handleEnter(event,this)" onmouseleave="hideTooltip()" style="width:36px;height:28px;border-radius:5px;background:' + bg + ';cursor:pointer;flex-shrink:0;"></div>'
+      + '<span style="font-size:11px;font-weight:700;color:#444c6a;white-space:nowrap;">' + fmtWeekLabel(w) + '</span>'
+      + '</div></th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  projects.forEach(function([proj, weeks], idx) {
+    const taskData = (DATA.taskData && DATA.taskData[resource] && DATA.taskData[resource][proj]) || null;
+    const hasTasks = taskData && Object.values(taskData).some(tw => tw.some(h => h > 0));
+    const isExp = !!ddExpanded[idx];
+
+    html += '<tr class="proj-row" data-idx="' + idx + '">';
+    html += '<td class="proj-toggle">';
+    if (hasTasks) {
+      html += '<span class="row-arrow' + (isExp ? ' open' : '') + '">&#9654;</span>';
+    } else {
+      html += '<span style="display:inline-block;width:24px;"></span>';
+    }
+    html += abbreviateProject(proj) + '</td>';
+    weeks.forEach(function(h) {
+      html += '<td class="wk' + (h <= 0 ? ' zero' : '') + '">' + (h > 0 ? h.toFixed(1) : '') + '</td>';
+    });
+    html += '</tr>';
+
+    if (hasTasks) {
+      Object.entries(taskData)
+        .filter(([, tw]) => tw.some(h => h > 0))
+        .sort((a,b) => {
+          const firstA = a[1].find(h => h > 0) || 0;
+          const firstB = b[1].find(h => h > 0) || 0;
+          return firstB - firstA;
+        })
+        .forEach(function([task, tw]) {
+          html += '<tr class="task-row" data-idx="' + idx + '" style="display:none;">';
+          html += '<td style="padding-left:44px;font-size:12px;color:#000000;">&#8627; ' + task + '</td>';
+          tw.forEach(function(h) {
+            html += '<td class="wk' + (h <= 0 ? ' zero' : '') + '">' + (h > 0 ? h.toFixed(1) : '') + '</td>';
+          });
+          html += '</tr>';
+        });
+    }
+  });
+
+  // Weekly totals footer row
+  html += '<tfoot><tr style="border-top:2px solid #ccc;">'
+    + '<td style="padding:9px 14px;font-weight:700;font-size:14px;color:#000;background:#f5f7fa;position:sticky;left:0;">Weekly Total</td>';
+  weekLabels.forEach((w, wi) => {
+    const total = resHours[wi] || 0;
+    html += '<td class="wk" style="font-weight:700;font-size:12px;color:#000;background:#f5f7fa;border-top:2px solid #ccc;">'
+      + '<span style="font-size:14px;">' + (total > 0 ? total.toFixed(1) : '') + '</span></td>';
+  });
+  html += '</tr></tfoot>';
+
+  html += '</tbody>';
+  t.innerHTML = html;
+  section.style.display = 'block';
+}
+
+// ══ RENDER ALL RESOURCES ══
+function renderAllView() {
+  const { weekLabels, resources, resourceHours } = DATA;
+
+  const heatmapWrap = document.getElementById('heatmap-all').closest('.heatmap-wrap');
+  const drillSection = document.getElementById('drilldown-section');
+  const t = document.getElementById('heatmap-all');
+
+  // Build header row — same for both all and single resource
+  let h = '<thead><tr><th class="name-col" style="background:transparent;padding:0;"><div style="background:#eff1f5;border-radius:6px;width:100%;height:40px;"></div></th>';
+  weekLabels.forEach(w => { h += '<th title="' + w + '">' + fmtWeekLabel(w) + '</th>'; });
+  h += '</tr></thead><tbody>';
+
+  if (selectedResource !== 'all') {
+    // Single resource — hide standalone heatmap, drill-down has heat in header
+    heatmapWrap.style.display = 'none';
+    renderDrilldown(selectedResource);
+    return;
+  }
+
+  // All resources — show all rows, hide drill-down
+  heatmapWrap.style.display = '';
+  drillSection.style.display = 'none';
+  resources.forEach(r => {
+    h += '<tr class="resource-row"><td class="resource-name-cell">' + r + '</td>';
+    resourceHours[r].forEach((hrs, wi) => {
+      const pto = getPtoHours(r, wi); const cls = cellClass(hrs, pto);
+      h += '<td class="hour-cell" data-res="' + r.replace(/"/g,'&quot;') + '" data-wi="' + wi + '" onmouseenter="handleEnter(event,this)" onmouseleave="hideTooltip()">' + fmtCell(hrs, pto, cls) + '</td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody>';
+  t.innerHTML = h;
+}
+
+// ══ RENDER PROJECT VIEW ══
+// ── PROJECT CHECKBOX DROPDOWN ──
+let selectedProjects = [];
+
+function toggleProjDropdown() {
+  const list = document.getElementById('proj-dropdown-list');
+  list.style.display = list.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('proj-dropdown-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const list = document.getElementById('proj-dropdown-list');
+    if (list) list.style.display = 'none';
+  }
+});
+
+function buildProjDropdown() {
+  const list = document.getElementById('proj-dropdown-list');
+  if (!list) return;
+  list.innerHTML = '';
+  DATA.projects.forEach(p => {
+    const isChecked = selectedProjects.includes(p);
+    const isDisabled = !isChecked && selectedProjects.length >= 5;
+    const item = document.createElement('label');
+    item.className = 'proj-check-item' + (isDisabled ? ' disabled' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = isChecked;
+    cb.disabled = isDisabled;
+    cb.onchange = function() {
+      if (cb.checked) {
+        if (selectedProjects.length < 5) selectedProjects.push(p);
+      } else {
+        selectedProjects = selectedProjects.filter(x => x !== p);
+      }
+      updateProjBtnLabel();
+      buildProjDropdown();
+      renderProjectView();
+    };
+    const span = document.createElement('span');
+    span.textContent = abbreviateProject(p);
+    item.appendChild(cb);
+    item.appendChild(span);
+    list.appendChild(item);
+  });
+}
+
+function updateProjBtnLabel() {
+  const lbl = document.getElementById('proj-btn-label');
+  const badge = document.getElementById('proj-count-badge');
+  if (selectedProjects.length === 0) {
+    lbl.textContent = 'Select up to 5 projects…';
+    badge.textContent = '';
+  } else {
+    lbl.textContent = selectedProjects.map(p => abbreviateProject(p)).join(', ').substring(0, 60) + (selectedProjects.length > 1 ? '…' : '');
+    badge.textContent = selectedProjects.length + ' selected';
+  }
+}
+
+function renderProjectView() {
+  const { weekLabels, projectData } = DATA;
+  const t = document.getElementById('heatmap-proj');
+
+  if (selectedProjects.length === 0) {
+    t.innerHTML = '<tbody><tr><td colspan="2" style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">Select one or more projects above to view the heatmap.</td></tr></tbody>';
+    return;
+  }
+
+  // Build one shared header
+  let html = '<thead><tr>';
+  html += '<th class="name-col" style="background:transparent;padding:0;"><div style="background:#eff1f5;border-radius:6px;width:100%;height:40px;"></div></th>';
+  weekLabels.forEach(w => { html += '<th title="' + w + '">' + fmtWeekLabel(w) + '</th>'; });
+  html += '</tr></thead><tbody>';
+
+  // Render each selected project as a labelled section
+  selectedProjects.forEach(proj => {
+    const projResources = projectData[proj];
+    const resNames = projResources ? Object.keys(projResources).filter(r => projResources[r].some(h => h > 0)) : [];
+
+    // Project label row
+    html += '<tr><td colspan="' + (weekLabels.length + 1) + '" style="padding:8px 14px 4px;background:#f0f8f6;font-size:12px;font-weight:700;color:var(--accent);border-top:2px solid #c5deda;letter-spacing:.2px;position:sticky;left:0;">'
+      + abbreviateProject(proj) + '</td></tr>';
+
+    if (resNames.length === 0) {
+      html += '<tr><td colspan="' + (weekLabels.length+1) + '" style="padding:10px 14px;color:var(--text-muted);font-size:12px;">No active hours.</td></tr>';
+    } else {
+      resNames.forEach(r => {
+        html += '<tr class="resource-row"><td class="resource-name-cell">' + r + '</td>';
+        projResources[r].forEach((hrs, wi) => {
+          const pto2 = getPtoHours(r, wi); const cls2 = cellClass(hrs, pto2);
+          html += '<td class="hour-cell" data-res="' + r.replace(/"/g,'&quot;') + '" data-wi="' + wi + '" data-proj="' + proj.replace(/"/g,'&quot;') + '" onmouseenter="handleEnter(event,this)" onmouseleave="hideTooltip()">' + fmtCell(hrs, pto2, cls2) + '</td>';
+        });
+        html += '</tr>';
+      });
+    }
+  });
+
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
+// ══ TOOLTIP ══
+function handleEnter(e, cell) {
+  const resource = cell.getAttribute('data-res');
+  const weekIdx  = parseInt(cell.getAttribute('data-wi'), 10);
+  const proj     = cell.getAttribute('data-proj') || null;
+  showTooltip(e, resource, weekIdx, proj);
+}
+function showTooltip(e, resource, weekIdx, projectFilter) {
+  const tt = document.getElementById('tooltip');
+  const hrs = DATA.resourceHours[resource][weekIdx];
+  document.getElementById('tt-name').textContent = resource;
+  document.getElementById('tt-week').textContent = DATA.weekLabels[weekIdx];
+  const total = projectFilter ? (DATA.projectData[projectFilter]?.[resource]?.[weekIdx] || 0) : hrs;
+  const ptoHrs = getPtoHours(resource, weekIdx);
+  const ptoDaysCount = ptoDays(ptoHrs);
+  const isFullPto = ptoHrs > 35;
+  const cls = isFullPto ? 'pto-label' : total > 42 ? 'over' : total > 35 ? 'warn' : 'ok';
+  const totEl = document.getElementById('tt-total');
+  totEl.className = 'tooltip-total ' + cls;
+  if (isFullPto) {
+    totEl.textContent = '🏖 PTO ' + ptoDaysCount + ' day' + (ptoDaysCount !== 1 ? 's' : '') + ' — Full Week Off';
+  } else if (ptoHrs > 0) {
+    totEl.textContent = (total > 42 ? '⚠ ' + total.toFixed(1) + ' hrs — OVER CAPACITY' : total.toFixed(1) + ' hrs') + '  |  🏖 PTO ' + ptoDaysCount + 'd';
+  } else {
+    totEl.textContent = total > 42 ? '⚠ ' + total.toFixed(1) + ' hrs — OVER CAPACITY' : total.toFixed(1) + ' hrs';
+  }
+  const breakdown = DATA.resourceProjectBreakdown[resource] || {};
+  let projHTML = '';
+  const projEntries = Object.entries(breakdown)
+    .map(([proj, weeks]) => ({ proj, h: weeks[weekIdx] || 0 }))
+    .filter(e => e.h > 0)
+    .sort((a, b) => b.h - a.h);
+  projEntries.forEach(({ proj, h }) => {
+    projHTML += '<div class="tooltip-proj-row"><span class="tooltip-proj-name" title="' + proj + '">' + abbreviateProject(proj) + '</span><span>' + h.toFixed(1) + ' h</span></div>';
+  });
+  document.getElementById('tt-projects').innerHTML = projHTML || '<span style="color:var(--text-dim);font-size:11px">No hours this week</span>';
+  tt.classList.add('visible');
+  positionTooltip(e, tt);
+}
+function positionTooltip(e, tt) {
+  const pad = 14, vw = window.innerWidth, vh = window.innerHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + 360 > vw) x = e.clientX - 360 - pad;
+  if (y + 280 > vh) y = e.clientY - 280 - pad;
+  tt.style.left = x + 'px'; tt.style.top = y + 'px';
+}
+document.addEventListener('mousemove', e => { const tt = document.getElementById('tooltip'); if (tt.classList.contains('visible')) positionTooltip(e, tt); });
+function hideTooltip() { document.getElementById('tooltip').classList.remove('visible'); }
+
+// ══ TABS ══
+function switchTab(tab) {
+  document.querySelectorAll('.view-toggle .tab').forEach(t => {
+    const isAll = t.textContent.trim() === 'By Resource';
+    t.classList.toggle('active', (isAll && tab==='all') || (!isAll && tab==='project'));
+  });
+  const viewAll = document.getElementById('view-all');
+  const viewProj = document.getElementById('view-project');
+  const toolbar = document.getElementById('toolbar-row');
+  const resourceBar = document.getElementById('resource-bar');
+  if (viewAll) viewAll.classList.toggle('active', tab==='all');
+  if (viewProj) viewProj.classList.toggle('active', tab==='project');
+  if (toolbar) toolbar.style.display = tab==='project' ? 'flex' : 'none';
+  if (resourceBar) resourceBar.style.display = tab==='project' ? 'none' : 'flex';
+  if (tab==='project') renderProjectView();
+}
+
+// ══ FILE UPLOAD ══
+function handleFileUpload(event) {
+  const file = event.target.files[0]; if (!file) return;
+  showLoading('Reading Excel file…');
+  const reader = new FileReader();
+  reader.onload = e => parseExcel(e.target.result, file.name);
+  reader.readAsArrayBuffer(file);
+}
+function showLoading(msg) { document.getElementById('loadingText').textContent = msg; document.getElementById('loadingOverlay').classList.add('show'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+
+function parseExcel(buffer, filename) {
+  if (!window.XLSX) { loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', () => parseExcel(buffer, filename)); return; }
+  try {
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+    // Extract metadata from row index 3 (line 4 = "Generated on behalf of...")
+    let reportMeta = '';
+    for (let i = 0; i < Math.min(8, raw.length); i++) {
+      const cell = raw[i] && raw[i][0];
+      if (cell && typeof cell === 'string' && cell.startsWith('Generated on behalf')) { reportMeta = cell; break; }
+    }
+
+    let headerIdx = -1;
+    for (let i = 0; i < raw.length; i++) { if (raw[i] && raw[i][0] === 'First Name') { headerIdx = i; break; } }
+    if (headerIdx < 0) { alert('Could not find header row. Please check the file format.'); hideLoading(); return; }
+
+    const headers = raw[headerIdx];
+    const weekCols = [], weekLabels = [];
+    headers.forEach((h, i) => { if (h && typeof h === 'string' && /\d{2}\/\d{2}\/\d{2}/.test(h)) { weekCols.push(i); weekLabels.push(h.replace(/\n/g,' ')); } });
+
+    let curFirst = null, curLast = null;
+    const parsed = raw.slice(headerIdx+1).map(r => {
+      if (!r) return null;
+      if (r[0]) curFirst = r[0]; if (r[1]) curLast = r[1];
+      return { firstName: curFirst||'', lastName: curLast||'', project: r[3]||'', name: r[4]||'', hours: weekCols.map(ci => parseFloat(r[ci])||0) };
+    }).filter(Boolean);
+
+    const PTO_TASKS = new Set(['Time Off - Stat. Holidays', 'Time Off - Vacation & Personal Time']);
+    const taskRows = parsed.filter(r => { const full = (r.firstName+' '+r.lastName).trim(); return r.name !== full && r.name !== r.project; });
+    const resourceMap = {}, projectMap = {}, projBreakdown = {}, ptoMap = {};
+    taskRows.forEach(r => {
+      const resource = (r.firstName+' '+r.lastName).trim();
+      if (PTO_TASKS.has(r.name)) {
+        if (!ptoMap[resource]) ptoMap[resource] = new Array(weekLabels.length).fill(0);
+        r.hours.forEach((h, i) => { ptoMap[resource][i] = Math.round((ptoMap[resource][i]+h)*100)/100; });
+      }
+    });
+    taskRows.forEach(r => {
+      const resource = (r.firstName+' '+r.lastName).trim(), proj = r.project;
+      if (!resource) return;
+      if (!resourceMap[resource]) resourceMap[resource] = new Array(weekLabels.length).fill(0);
+      if (!projBreakdown[resource]) projBreakdown[resource] = {};
+      r.hours.forEach((h, i) => {
+        resourceMap[resource][i] = Math.round((resourceMap[resource][i]+h)*100)/100;
+        if (proj) { if (!projBreakdown[resource][proj]) projBreakdown[resource][proj] = new Array(weekLabels.length).fill(0); projBreakdown[resource][proj][i] = Math.round((projBreakdown[resource][proj][i]+h)*100)/100; }
+      });
+      if (proj && !proj.startsWith('z-Cogsdale')) {
+        if (!projectMap[proj]) projectMap[proj] = {};
+        if (!projectMap[proj][resource]) projectMap[proj][resource] = new Array(weekLabels.length).fill(0);
+        r.hours.forEach((h, i) => { projectMap[proj][resource][i] = Math.round((projectMap[proj][resource][i]+h)*100)/100; });
+      }
+    });
+    // Build task-level breakdown: resource -> project -> task -> [hrs]
+    const taskDataMap = {};
+    taskRows.forEach(r => {
+      const resource = (r.firstName+' '+r.lastName).trim();
+      const proj = r.project, task = r.name;
+      if (!resource || !proj || !task || task === proj) return;
+      if (!taskDataMap[resource]) taskDataMap[resource] = {};
+      if (!taskDataMap[resource][proj]) taskDataMap[resource][proj] = {};
+      if (!taskDataMap[resource][proj][task]) taskDataMap[resource][proj][task] = new Array(weekLabels.length).fill(0);
+      r.hours.forEach((h, i) => { taskDataMap[resource][proj][task][i] = Math.round((taskDataMap[resource][proj][task][i]+h)*100)/100; });
+    });
+    DATA = { weekLabels, reportMeta, maxHours: 42, ptoHours: ptoMap, resources: Object.keys(resourceMap), resourceHours: resourceMap, projects: Object.keys(projectMap).sort(), projectData: projectMap, resourceProjectBreakdown: projBreakdown, taskData: taskDataMap };
+    // Save to localStorage so it persists after refresh
+    try { localStorage.setItem('cogsdale_dashboard_data', JSON.stringify(DATA)); } catch(e) {}
+    initUI(filename);
+    hideLoading();
+    const now = new Date(); document.getElementById('refresh-status').textContent = '✓ Uploaded ' + now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+  } catch(err) { console.error(err); alert('Error parsing file: '+err.message); hideLoading(); }
+}
+function loadScript(src, cb) { const s = document.createElement('script'); s.src = src; s.onload = cb; document.head.appendChild(s); }
+
+// ══ INIT ══
+function initUI(label) {
+  // report-label hidden; meta shown in badge
+  const meta = DATA.reportMeta || (label ? 'Loaded: ' + label : '');
+  const metaShort = meta.replace(/^Generated on behalf of .+ on /i, '');
+  document.getElementById('data-badge').textContent = 'Updated on: ' + metaShort;
+  selectedProjects = [];
+  updateProjBtnLabel();
+  buildProjDropdown();
+  buildResourceBar();
+  renderAllView();
+  if (document.getElementById('view-project').classList.contains('active')) renderProjectView();
+}
+
+document.getElementById('toolbar-row').style.display = 'none';
+
+// Apply taskData to embedded DATA (fallback)
+DATA.taskData = {"Allan Lapp": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)": {"Assistance for Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "z-Cogsdale Corporation - Non Billable Activities (time off/training/admin) > Admin General": [7.5, 7.5, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.52, 2.02], "Knowledge Transfer/Mentoring on Projects": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Stat. Holidays": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Vacation & Personal Time": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "LCMUA - FIS / CMG Implementation": {"LCMUA - Setup Data Archiving": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Fredericton - QUO-06858 - Bill Template Redesign using Template 25": {"[QUO-06858] - Assistance with Template 25": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "New Smyrna Beach Utilities - QUO-06941v2 - AMI Integration and Implementation": {"QUO-06941V2 - Assistance for Support": [2.0, 0.0, 0.0, 0.0, 0.54, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Water Authority \u2013 Cayman - QUO-16063 - AMI Discovery/Requirement Definition/General Assistance": {"QUO-16063 - General AMI work": [5.0, 5.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Provident Energy Management Inc - NexusCIS Implementation": {"Project Team Meeting": [1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Collection Letters - Create Letters & Unit Test (8 hrs per letter)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Collection Letters - PS Functional Testing Assistance (2 hrs per letter)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Data Cleanup - Location classes aligned": [3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.7 | CIS-4.8 - Report Specification": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-5.0 -  NexusCIS Job Aids": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.9 - Update Traceability Matrix": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-5.1 -  NexusCIS Training Agenda(s)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.67, 0.0, 0.0, 0.0], "CIS-5.4 -  Cutover Schedule": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.83, 0.83, 0.83, 0.67], "CIS-5.5 -  Contingency Plan": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.28, 0.28, 0.28, 0.22], "CIS-5.6 - NexusCIS Functional Testing Cycle 1": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.5, 12.5, 12.5, 10.0], "CIS-5.2 -  NexusCIS UAT Tester Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.37, 0.3, 0.0, 0.0], "CIS-5.3 -  End User Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.37, 0.3, 0.0]}, "City of Griffin - QUO-16119 - Mass Removal of Yard Waste Connections": {"Griffin PS Work": [15.0, 15.0, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Griffin - QUO-16076 - AMI Discovery/Requirement Definition/General Assistance": {"Assistance in determining integration points and process changes": [10.0, 10.0, 10.0, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}, "Hammad Saleem": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)": {"Assistance for Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "z-Cogsdale Corporation - Non Billable Activities (time off/training/admin) > Admin General": [7.5, 7.5, 7.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Knowledge Transfer/Mentoring on Projects": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 30.0], "Time Off - Stat. Holidays": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Vacation & Personal Time": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing": {"Weekly Team Project Status Meeting": [0.1, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "DC3.1 - Updated UAT Conversion Take (C002)": [1.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}, "Jason O'Brien": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)": {"Assistance for Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "z-Cogsdale Corporation - Non Billable Activities (time off/training/admin) > Admin General": [7.5, 7.5, 7.5, 7.5, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.28, 1.02], "Knowledge Transfer/Mentoring on Projects": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Stat. Holidays": [0.0, 0.0, 0.0, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.45, 1.16], "Time Off - Vacation & Personal Time": [0.0, 0.0, 0.0, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.1]}, "Antigua Public Utilities - QUO-06540 - Collections Setup - Additional Assistance": {"Complete Testing/Validation": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Taunton CIS Implementation": {"Calix": [0.22, 0.22, 0.16, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Mobile solution - DataVoice": [0.0, 0.0, 0.0, 0.35, 0.35, 0.35, 0.26, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "LCMUA - CIS / SilverBlaze Implementation": {"Project Team Meetings": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Contingency Plan": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Go Live - Punchlist Creation": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Fredericton - QUO-06858 - Bill Template Redesign using Template 25": {"[QUO-06858] - Assistance with Template 25": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing": {"Weekly Team Project Status Meeting": [1.88, 1.88, 1.88, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Testing & UAT Support": [0.0, 26.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "DC3.1 - Updated UAT Conversion Take (C002)": [1.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Post Go Live Assistance": [0.0, 0.0, 0.0, 16.67, 16.67, 16.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Fort Pierce Utilities Authority - QUO-16029 - NexusCIS Implementation": {"Project Team Meetings": [0.0, 1.11, 1.11, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Business Process Review Documentation": [0.12, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Functional work during cutover weekend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Go-Live Cutover CheckList": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.5, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Post Go-Live Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0, 30.0, 30.0, 30.0, 18.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Navigation Training (onsite)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "User Acceptance Testing Assistance": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 15.0, 25.0, 25.0, 25.0, 25.0, 25.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Florida Keys Aqueduct Authority - QUO-16032 - NexusCIS Implementation": {"ProjectTeam meetings": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Configuration (Update Config workbook)": [2.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Development/Customizations": [0.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Interface & Workflows": [0.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS smoke testing": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Reporting": [0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Navigation Training (onsite)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Out-of-the-box test scripts in TestRail": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "User Acceptance Testing Assistance": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 11.25, 18.75, 18.75, 18.75, 7.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Functional work during cutover weekend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Go-Live Cutover CheckList": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.5, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Technical work during cutover weekend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Post Go-Live Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 15.0, 15.0, 15.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Water Authority \u2013 Cayman - QUO-16063 - AMI Discovery/Requirement Definition/General Assistance": {"QUO-16063 - General AMI work": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Salisbury - QUO-16059 - NexusCIS Implementation": {"Project Team Meeting": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Reporting": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.4, 3.0, 3.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "All customizations/forms that need to be updated (we will gather them all during the BPR)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Configuration (Update Config workbook)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.67, 3.33, 3.33, 3.33, 3.33, 3.33, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Navigation Training (onsite)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 16.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Go-Live Cutover CheckList": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.0, 0.0], "User Acceptance Testing Assistance": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 12.5, 12.5, 12.5, 12.5, 12.5, 7.5, 0.0, 0.0], "Functional work during cutover weekend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0, 0.0], "Post Go-Live Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 10.0]}, "Provident Energy Management Inc - NexusCIS Implementation": {"Project Team Meeting": [40.0, 40.0, 1.0, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.54], "NexusCIS Requirements Review": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.33, 2.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.9 - NexusCIS Test Plan": [0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.5 - Functional Test Scripts": [0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 5.0, 5.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.11 - NexusCIS Interface Plan": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.0 - NexusCIS System Configuration": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.10 - Configuration Workbook": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.75, 3.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-5.4 -  Cutover Schedule": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.83, 0.83, 0.83, 0.67], "CIS-5.5 -  Contingency Plan": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.28, 0.28, 0.28, 0.22]}, "City of Griffin - QUO-16064 - NexusCIS Implementation": {"Reporting updates (up to 16 hrs)": [0.0, 0.0, 4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Navigation Training (onsite)": [0.0, 0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Mock Go-Live Cutover CheckList": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "User Acceptance Testing Assistance": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Go-Live Cutover CheckList": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.75, 3.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Mock Go-Live": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Prep for NexusCIS Go-Live (Travel onsite, etc)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Go-Live Cutover to NexusCIS": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "\u2b50 POST GO-LIVE \u2b50": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0, 25.0, 25.0, 25.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Medicine Hat - QUO-16092 - Business Process Review and Nexus CIS Readiness": {"Business Process Review Documentation": [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.6]}, "City of Fredericton - QUO-16102 - Customer Communications Setup/Implementation": {"Testing Assistance": [0.27, 0.27, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Griffin - QUO-16119 - Mass Removal of Yard Waste Connections": {"Griffin PS Work": [0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.28, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Griffin - QUO-16076 - AMI Discovery/Requirement Definition/General Assistance": {"Assistance in determining integration points and process changes": [0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.54, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Rockdale County Government - QUO-16125 - Location Extract": {"UAT Assistance": [0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}, "Jean Phillips": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin) > Admin General": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}, "Lauren Russo": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)": {"Assistance for Support": [0.0, 0.0, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 37.5, 30.0], "z-Cogsdale Corporation - Non Billable Activities (time off/training/admin) > Admin General": [7.5, 7.5, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.88, 2.3], "Knowledge Transfer/Mentoring on Projects": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Stat. Holidays": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Vacation & Personal Time": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 4.35, 3.48]}, "Antigua Public Utilities - QUO-06540 - Collections Setup - Additional Assistance": {"Complete Testing/Validation": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.04, 0.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "LCMUA - CIS / SilverBlaze Implementation": {"Project Team Meetings": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "List and map - all existing reports and Smartlists": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Mock Go-Live Assistance": [0.0, 0.0, 0.0, 0.0, 6.53, 6.53, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Field staff training": [0.0, 0.0, 0.0, 0.0, 0.0, 1.33, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Go Live - Validation and Go/No Go decision": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Go Live - Punchlist Creation": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing": {"Weekly Team Project Status Meeting": [0.89, 0.89, 0.89, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Testing & UAT Support": [20.0, 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Fort Pierce Utilities Authority - QUO-16029 - NexusCIS Implementation": {"Project Team Meetings": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Florida Keys Aqueduct Authority - QUO-16032 - NexusCIS Implementation": {"ProjectTeam meetings": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Configuration (Update Config workbook)": [10.0, 10.0, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Development/Customizations": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Interface & Workflows": [0.0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS smoke testing": [0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Reporting": [0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Navigation Training (onsite)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Out-of-the-box test scripts in TestRail": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "User Acceptance Testing Assistance": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 11.25, 18.75, 18.75, 18.75, 7.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Functional work during cutover weekend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Go-Live Cutover CheckList": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.5, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Technical work during cutover weekend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Post Go-Live Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 15.0, 15.0, 15.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Water Authority \u2013 Cayman - QUO-16063 - AMI Discovery/Requirement Definition/General Assistance": {"QUO-16063 - General AMI work": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Salisbury - QUO-16059 - NexusCIS Implementation": {"Project Team Meeting": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Provident Energy Management Inc - NexusCIS Implementation": {"IVR - Develop Export": [0.09, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "IVR - Unit Testing": [0.11, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Collection Letters - Create Letters & Unit Test (8 hrs per letter)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Griffin - QUO-16064 - NexusCIS Implementation": {"Reporting updates (up to 16 hrs)": [1.6, 1.6, 1.6, 1.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "User Acceptance Testing Assistance": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Prep for NexusCIS Go-Live (Travel onsite, etc)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Medicine Hat - QUO-16092 - Business Process Review and Nexus CIS Readiness": {"Business Process Review Documentation": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Griffin - QUO-16076 - AMI Discovery/Requirement Definition/General Assistance": {"Assistance in determining integration points and process changes": [0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.51, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}, "Marc Van Niekerk": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)": {"Assistance for Support": [0.0, 30.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "z-Cogsdale Corporation - Non Billable Activities (time off/training/admin) > Admin General": [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 2.0, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5], "Knowledge Transfer/Mentoring on Projects": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Stat. Holidays": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Vacation & Personal Time": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 30.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "LCMUA - CIS / SilverBlaze Implementation": {"Project Team Meetings": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Contingency Plan": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS - DC Mock - import data": [0.0, 0.0, 0.0, 0.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS - DC - Data Integrity Report": [0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Mock Go-Live Assistance": [0.0, 0.0, 0.0, 0.0, 6.94, 6.94, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Go Live - Import Data": [0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Go Live - Data Integrity Report": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Go Live - Validation and Go/No Go decision": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Hingham Municipal Lighting Plant - QUO-06960 - WRWS Billing": {"Weekly Team Project Status Meeting": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "DC3.1 - Updated UAT Conversion Take (C002)": [1.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Rockdale County Government - QUO-16125 - Location Extract": {"UAT Assistance": [1.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Provident Energy Management Inc - QUO-19012 - PowerStream Acquisition \u2013 Discovery and Data Mapping Sessions": {"Data Mapping": [3.0, 25.0, 7.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}, "Nicole Aubry": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)": {"Assistance for Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "z-Cogsdale Corporation - Non Billable Activities (time off/training/admin) > Admin General": [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5], "Knowledge Transfer/Mentoring on Projects": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Stat. Holidays": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Vacation & Personal Time": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Taunton CIS Implementation": {"Calix": [0.53, 0.53, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Mobile solution - DataVoice": [0.0, 0.0, 0.0, 2.41, 2.41, 2.41, 1.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "LCMUA - CIS / SilverBlaze Implementation": {"Project Team Meetings": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Collection notice": [0.77, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS UAT assistance": [5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "List and map - all existing reports and Smartlists": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "SB internal testing": [1.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Contingency Plan": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Bill template updates": [0.0, 4.74, 4.74, 4.74, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Onsite training": [24.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "SilverBlaze training": [1.33, 0.89, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Silverblaze functional testing": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Mock Go-Live Assistance": [0.0, 0.0, 0.0, 0.0, 6.53, 6.53, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Field staff training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Go Live - Validation and Go/No Go decision": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Go Live - Punchlist Creation": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Complete Punchlist Items": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 27.9, 45.0, 45.0, 45.0, 17.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS Support Transition Documentation": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.44, 12.0, 4.56, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Rockdale County Government - QUO-06693 - SilverBlaze Customer Portal": {"UAT (Post-Delay)": [1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Pre Go-Live Items": [4.5, 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Go-Live": [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Post Go-Live Support": [0.0, 0.91, 2.27, 1.82, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Fort Pierce Utilities Authority - QUO-16029 - NexusCIS Implementation": {"Project Team Meetings": [0.2, 0.2, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Business Process Review Documentation": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "City of Salisbury - QUO-16059 - NexusCIS Implementation": {"Project Team Meeting": [0.0, 1.0, 1.0, 1.0, 11.04, 11.04, 11.04, 11.04, 11.04, 11.04, 11.04, 11.04, 11.04, 11.04, 11.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "SilverBlaze Portal Installation, configuration, integration": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "SB internal testing": [0.0, 7.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Reporting": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.4, 3.0, 3.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "All customizations/forms that need to be updated (we will gather them all during the BPR)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Configuration (Update Config workbook)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.67, 3.33, 3.33, 3.33, 3.33, 3.33, 0.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Navigation Training (onsite)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 16.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Go-Live Cutover CheckList": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.0, 0.0], "User Acceptance Testing Assistance": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 12.5, 12.5, 12.5, 12.5, 12.5, 7.5, 0.0, 0.0], "Functional work during cutover weekend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0, 0.0], "Post Go-Live Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0, 10.0]}, "Provident Energy Management Inc - NexusCIS Implementation": {"Project Team Meeting": [1.0, 3.0, 1.0, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02], "SB-2.3 - Silverblaze Discovery and Portal Transformation Plan": [0.0, 0.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "SB-7.1 - Silverblaze Post Implementation Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "SB-7.0 - Silverblaze Go-Live Punch list Complete": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "SB-7.2 - Silverblaze Transition to Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}, "Norma Mayhew": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)": {"Assistance for Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "z-Cogsdale Corporation - Non Billable Activities (time off/training/admin) > Admin General": [7.5, 7.5, 7.5, 7.5, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 2.17, 1.74], "Knowledge Transfer/Mentoring on Projects": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Stat. Holidays": [0.0, 0.0, 0.0, 0.0, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.44, 1.15], "Time Off - Vacation & Personal Time": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Provident Energy Management Inc - NexusCIS Implementation": {"Project Team Meeting": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "PEMI Walkthrough - Collections": [6.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "IVR - Develop Export": [1.12, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "IVR - Unit Testing": [0.11, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Collection Letters - Create Letters & Unit Test (8 hrs per letter)": [5.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Collection Letters - PS Functional Testing Assistance (2 hrs per letter)": [6.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.7 - Report Plan": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Data Cleanup - Location classes aligned": [3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.10 - Traceability Matrix": [0.0, 2.22, 2.22, 2.22, 2.22, 2.22, 2.22, 2.22, 2.22, 2.22, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.7 | CIS-4.8 - Report Specification": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Customer Communications configurations": [0.0, 3.33, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "NexusCIS Requirements Review": [0.0, 1.0, 2.0, 0.63, 0.63, 0.63, 0.63, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Final Functional Testing & UAT (disconnect customization)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.9 - NexusCIS Test Plan": [0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-5.0 -  NexusCIS Job Aids": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Collection Letters - Core Team Training": [0.0, 0.0, 1.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Disconnect Customization - PS Functional Testing": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Final Functional Testing & UAT (base collections)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Smoke Test": [0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Create/configure email templates (as needed)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Disconnect Customization - Core Team Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Final testing of email attachment for billing": [0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Disconnect Customization - Functional Testing Assistance": [0.0, 0.0, 0.0, 0.83, 4.17, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.5 - Functional Test Scripts": [0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 5.0, 5.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Base Collections in production": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Disconnect customization in production": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.0 - NexusCIS Familiarization Training Agenda": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.2 - NexusCIS Familiarization Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.11 - NexusCIS Interface Plan": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.67, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.0 - NexusCIS System Configuration": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.10 - Configuration Workbook": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.75, 3.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-5.1 -  NexusCIS Training Agenda(s)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.67, 0.0, 0.0, 0.0], "CIS-5.4 -  Cutover Schedule": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.83, 0.83, 0.83, 0.67], "CIS-5.5 -  Contingency Plan": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.28, 0.28, 0.28, 0.22], "CIS-5.6 - NexusCIS Functional Testing Cycle 1": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.5, 12.5, 12.5, 10.0], "CIS-5.2 -  NexusCIS UAT Tester Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.37, 0.3, 0.0, 0.0], "CIS-5.3 -  End User Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.37, 0.3, 0.0]}}, "Therese Antonini": {"z-Cogsdale Corporation - Non Billable Activities (time off/training/admin)": {"Assistance for Support": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "z-Cogsdale Corporation - Non Billable Activities (time off/training/admin) > Admin General": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Knowledge Transfer/Mentoring on Projects": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Stat. Holidays": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Time Off - Vacation & Personal Time": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.79, 0.63]}, "City of Fredericton - QUO-06858 - Bill Template Redesign using Template 25": {"[QUO-06858] - Assistance with Template 25": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Sewerage and Water Board of New Orleans - QUO-16070v2 - Support Hrs for General Assistance": {"Additional Oracle Project Work": [2.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "Provident Energy Management Inc - NexusCIS Implementation": {"Collection Letters - Create Letters & Unit Test (8 hrs per letter)": [0.55, 0.55, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Collection Letters - PS Functional Testing Assistance (2 hrs per letter)": [0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Final Functional Testing & UAT (disconnect customization)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-5.0 -  NexusCIS Job Aids": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Collection Letters - Core Team Training": [0.0, 0.0, 1.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Disconnect Customization - PS Functional Testing": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Final Functional Testing & UAT (base collections)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Disconnect Customization - Core Team Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Disconnect Customization - Functional Testing Assistance": [0.0, 0.0, 0.0, 0.83, 4.17, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Base Collections in production": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "Disconnect customization in production": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.0 - NexusCIS Familiarization Training Agenda": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-2.6 - Change Management Workshop": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-3.2 - NexusCIS Familiarization Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-4.1 - Training Plan & Matrix": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "CIS-5.1 -  NexusCIS Training Agenda(s)": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.67, 0.0, 0.0, 0.0], "CIS-5.6 - NexusCIS Functional Testing Cycle 1": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.5, 12.5, 12.5, 10.0], "CIS-5.2 -  NexusCIS UAT Tester Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.37, 0.3, 0.0, 0.0], "CIS-5.3 -  End User Training": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.37, 0.3, 0.0]}, "City of Griffin - QUO-16064 - NexusCIS Implementation": {"NexusCIS Navigation Training (onsite)": [20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}};
+
+// ── CHECK localStorage FOR A MORE RECENTLY UPLOADED REPORT ──
+(function() {
+  try {
+    var saved = localStorage.getItem('cogsdale_dashboard_data');
+    if (saved) {
+      var parsed = JSON.parse(saved);
+      // Only use if newer than the embedded report
+      if (parsed && parsed.reportMeta && parsed.reportMeta !== DATA.reportMeta) {
+        DATA = parsed;
+        // silently use saved data — no status message shown
+      }
+    }
+  } catch(e) { /* ignore localStorage errors */ }
+})();
+
+initUI(null);
+
+// ── GITHUB AUTO-SAVE ──
+const GITHUB_STORAGE_KEY = 'cogsdale_github_settings';
+
+function getGhSettings() {
+  try { return JSON.parse(localStorage.getItem(GITHUB_STORAGE_KEY) || 'null'); } catch(e) { return null; }
+}
+function openGhModal() {
+  const s = getGhSettings() || {};
+  document.getElementById('gh-token-input').value = s.token || '';
+  document.getElementById('gh-owner-input').value = s.owner || 'pmo-cogsdale';
+  document.getElementById('gh-repo-input').value  = s.repo  || 'ResourceSchedule';
+  document.getElementById('gh-path-input').value  = s.path  || 'schedule.xlsx';
+  document.getElementById('gh-modal-status').textContent = '';
+  document.getElementById('gh-modal-overlay').classList.add('show');
+}
+function closeGhModal() {
+  document.getElementById('gh-modal-overlay').classList.remove('show');
+}
+function clearGhToken() {
+  localStorage.removeItem(GITHUB_STORAGE_KEY);
+  document.getElementById('gh-token-input').value = '';
+  setGhStatus('Token cleared.', false);
+}
+function saveGhSettings() {
+  const settings = {
+    token: document.getElementById('gh-token-input').value.trim(),
+    owner: document.getElementById('gh-owner-input').value.trim(),
+    repo:  document.getElementById('gh-repo-input').value.trim(),
+    path:  document.getElementById('gh-path-input').value.trim(),
+  };
+  if (!settings.token) { setGhStatus('Please enter a token.', true); return; }
+  localStorage.setItem(GITHUB_STORAGE_KEY, JSON.stringify(settings));
+  setGhStatus('✓ Settings saved!', false);
+  setTimeout(closeGhModal, 1000);
+}
+function setGhStatus(msg, isErr) {
+  const el = document.getElementById('gh-modal-status');
+  el.textContent = msg;
+  el.className = 'gh-status ' + (isErr ? 'err' : 'ok');
+}
+async function pushToGitHub(arrayBuffer) {
+  const s = getGhSettings();
+  if (!s || !s.token) return false;
+  const statusEl = document.getElementById('refresh-status');
+  statusEl.textContent = '⏳ Saving to GitHub…';
+  try {
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const apiUrl = 'https://api.github.com/repos/' + s.owner + '/' + s.repo + '/contents/' + s.path;
+    let sha = '';
+    try {
+      const getResp = await fetch(apiUrl, { headers: { 'Authorization': 'token ' + s.token, 'Accept': 'application/vnd.github.v3+json' } });
+      if (getResp.ok) { const data = await getResp.json(); sha = data.sha || ''; }
+    } catch(e) {}
+    const body = { message: 'Update schedule.xlsx via dashboard ' + new Date().toISOString(), content: base64 };
+    if (sha) body.sha = sha;
+    const pushResp = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + s.token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!pushResp.ok) { const err = await pushResp.json(); statusEl.textContent = '⚠ GitHub error: ' + (err.message || pushResp.status); return false; }
+    return true;
+  } catch(e) { statusEl.textContent = '⚠ GitHub push failed: ' + e.message; return false; }
+}
+
+// Replace handleFileUpload to also push to GitHub
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  showLoading('Reading Excel file…');
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const buffer = e.target.result;
+    parseExcel(buffer, file.name);
+    const pushed = await pushToGitHub(buffer);
+    const now = new Date();
+    document.getElementById('refresh-status').textContent = pushed
+      ? '✓ Saved to GitHub · ' + now.toLocaleDateString() + ' ' + now.toLocaleTimeString()
+      : '✓ Uploaded ' + now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+</script>
+<!-- GITHUB SETTINGS MODAL -->
+<div class="gh-modal-overlay" id="gh-modal-overlay">
+  <div class="gh-modal">
+    <h2>🔗 GitHub Auto-Save Setup</h2>
+    <p>Enter your GitHub Personal Access Token to enable automatic saving of uploaded reports to your GitHub repo. The token is stored only in your browser and never sent anywhere except GitHub.</p>
+    <label>Personal Access Token</label>
+    <input type="password" id="gh-token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+    <label>Repo Owner</label>
+    <input type="text" id="gh-owner-input" value="pmo-cogsdale" placeholder="e.g. pmo-cogsdale">
+    <label>Repo Name</label>
+    <input type="text" id="gh-repo-input" value="ResourceSchedule" placeholder="e.g. ResourceSchedule">
+    <label>File Path in Repo</label>
+    <input type="text" id="gh-path-input" value="schedule.xlsx" placeholder="e.g. schedule.xlsx">
+    <div class="gh-modal-btns">
+      <button class="gh-btn secondary" onclick="closeGhModal()">Cancel</button>
+      <button class="gh-btn secondary" onclick="clearGhToken()">Clear Token</button>
+      <button class="gh-btn primary" onclick="saveGhSettings()">Save Settings</button>
+    </div>
+    <div class="gh-status" id="gh-modal-status"></div>
+  </div>
+</div>
+
+</body>
+</html>
