@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232c7a6e'/%3E%3C!-- calendar grid --%3E%3Crect x='5' y='10' width='22' height='17' rx='2' fill='none' stroke='white' stroke-width='2'/%3E%3Cline x1='5' y1='15' x2='27' y2='15' stroke='white' stroke-width='2'/%3E%3Cline x1='11' y1='7' x2='11' y2='13' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='21' y1='7' x2='21' y2='13' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C!-- people dots --%3E%3Ccircle cx='10' cy='20' r='1.5' fill='white'/%3E%3Ccircle cx='16' cy='20' r='1.5' fill='white'/%3E%3Ccircle cx='22' cy='20' r='1.5' fill='white'/%3E%3Ccircle cx='10' cy='24' r='1.5' fill='white'/%3E%3Ccircle cx='16' cy='24' r='1.5' fill='white'/%3E%3C/svg%3E">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resource Load Dashboard</title>
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface2: #f5f7fa;
+    --border: #dde1ea;
+    --text: #1a2035;
+    --text-muted: #6b7394;
+    --text-dim: #bcc2d4;
+    --accent: #2c7a6e;
+    --accent-light: #e8f4f2;
+    --ok: #1a8a5a;
+    --warn: #b87000;
+    --over: #c0273f;
+    --cell-w: 48px;
+    --row-h: 48px;
+    --gap: 3px;
+    --name-w: 165px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: Arial, sans-serif; min-height: 100vh; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 18px 36px 14px;
+    border-bottom: 2px solid var(--border);
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .view-toggle { display:flex;background:#f0f2f5;border-radius:8px;padding:3px;gap:2px; }
+  .view-toggle .tab { padding:7px 18px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;color:var(--text-muted);border:none;background:transparent;transition:all .15s;user-select:none;white-space:nowrap; }
+  .view-toggle .tab:hover { color:var(--text); }
+  .view-toggle .tab.active { background:#ffffff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  .header-top { display:flex;align-items:center;justify-content:space-between;gap:24px;position:relative; }
+  .title-block { max-width:320px; }
+  .header-left { display: flex; align-items: center; gap: 22px; }
+  .logo-img { height: 44px; width: auto; }
+  .logo-divider { width: 1px; height: 38px; background: var(--border); }
+  .title-block h1 { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
+  .title-block p { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10px; padding: 3px 9px; border-radius: 4px; margin-top: 4px;
+    background: #eef6f5; border: 1px solid #c5deda; color: var(--accent);
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+  /* ── LEGEND + UPLOAD ROW ── */
+  .header-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; flex-wrap: wrap; gap: 10px; }
+  .legend { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+  .leg-dot { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+  .upload-area { display: flex; align-items: flex-end; gap: 10px; }
+  .upload-btn {
+    background: var(--accent); color: #fff; border: none;
+    padding: 7px 15px; border-radius: 6px; font-size: 12px; font-weight: 700;
+    cursor: pointer; font-family: Arial, sans-serif; transition: opacity .15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .upload-btn:hover { opacity: .85; }
+  #file-input { display: none; }
+  .refresh-status { font-size: 11px; color: var(--text-muted); }
+
+  /* ── TABS ── */
+  .tabs { display: flex; border-bottom: 2px solid var(--border); padding: 0 36px; background: var(--surface); }
+  .tab { padding: 12px 22px; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .15s; user-select: none; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── TOOLBAR ── */
+  .toolbar { padding: 12px 36px; display: flex; align-items: center; gap: 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .toolbar label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; }
+  select {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 12px; border-radius: 6px; font-size: 13px; font-family: Arial, sans-serif;
+    cursor: pointer; outline: none; min-width: 240px; max-width: 560px;
+    transition: border-color .15s;
+  }
+  select:hover, select:focus { border-color: var(--accent); }
+
+  /* ── MAIN CONTENT ── */
+  .content { padding: 22px 36px; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── HEATMAP TABLE ── */
+  .heatmap-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,.06); background: #eff1f5; padding: var(--gap); }
+  .heatmap-table { border-collapse: separate; border-spacing: var(--gap); width: max-content; min-width: 100%; }
+  .heatmap-table th, .heatmap-table td { padding: 0; border: none; background: transparent; }
+
+  /* Header row */
+  .heatmap-table thead th {
+    background: transparent;
+    font-size: 13px; font-family: Arial, sans-serif; font-weight: 700;
+    color: #444c6a; padding: 4px 0; text-align: center; white-space: nowrap;
+    height: 40px; vertical-align: middle;
+  }
+  .heatmap-table thead th.name-col {
+    width: var(--name-w); min-width: var(--name-w);
+    text-align: left; padding: 10px 14px; font-size: 11px; color: var(--text-muted);
+    position: sticky; left: 0; z-index: 10; background: transparent;
+  }
+
+  /* Resource name cell */
+  .resource-name-cell {
+    font-size: 13px; font-weight: 700; white-space: nowrap; padding: 0 14px;
+    width: var(--name-w); min-width: var(--name-w);
+    position: sticky; left: 0; z-index: 5;
+    background: #ffffff; height: var(--row-h); vertical-align: middle; border-radius: 6px;
+    border-right: 2px solid var(--border) !important;
+    color: var(--text);
+  }
+
+  /* Hour cells */
+  .hour-cell {
+    width: var(--cell-w); min-width: var(--cell-w); max-width: var(--cell-w);
+    height: var(--row-h); min-height: var(--row-h); max-height: var(--row-h);
+    text-align: center; vertical-align: middle;
+    font-size: 11px; font-family: Arial, sans-serif; font-weight: 700;
+    cursor: pointer; transition: filter .1s; position: relative;
+    padding: 0; overflow: hidden;
+  }
+  .cell-inner {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: var(--cell-w); height: var(--row-h);
+    border-radius: 6px;
+  }
+  .hour-cell:hover .cell-inner { filter: brightness(.92); }
+  .hour-cell { background: transparent !important; }
+  .hour-cell .cell-inner.zero { background: #ffffff; }
+  .hour-cell .cell-inner.over { background: #ffd0d8; color: #b8001e; }
+  .hour-cell .cell-inner.pto  { background: #b0b4c0; color: #ffffff; }
+
+  /* Resource rows */
+  .resource-row td { background: transparent; }
+
+
+
+  /* ── TOOLTIP ── */
+  .tooltip {
+    position: fixed; display: none; background: #ffffff; border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; font-size: 12px; z-index: 1000;
+    max-width: 340px; pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,.14);
+    font-family: Arial, sans-serif;
+  }
+  .tooltip.visible { display: block; }
+  .tooltip-name { font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--text); }
+  .tooltip-week { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .3px; }
+  .tooltip-total { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+  .tooltip-total.ok   { color: var(--ok); }
+  .tooltip-total.warn { color: var(--warn); }
+  .tooltip-total.over { color: var(--over); }
+  .tooltip-total.pto-label { color: #555; font-style: italic; }
+  .tooltip-projects { border-top: 1px solid var(--border); padding-top: 8px; max-height: 200px; overflow-y: auto; }
+  .tooltip-proj-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+  .tooltip-proj-row span:last-child { font-size: 11px; flex-shrink: 0; color: var(--text); font-weight: 700; }
+  .tooltip-proj-name { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; color: var(--text-muted); }
+
+  /* ── ALERT BANNER ── */
+  .alert-banner {
+    background: #fff0f2; border: 1px solid #f5b8c0; border-radius: 8px;
+    padding: 10px 16px; margin-bottom: 18px; display: none;
+    color: var(--over); font-size: 13px;
+  }
+  .alert-banner.show { display: block; }
+
+  /* ── LOADING OVERLAY ── */
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(240,242,245,.92); display: none;
+    align-items: center; justify-content: center; z-index: 2000; flex-direction: column; gap: 16px;
+  }
+  .loading-overlay.show { display: flex; }
+  .loading-spinner {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text-muted); }
+
+  /* ── SCROLLBAR ── */
+  /* ── GROUP DROPDOWNS ── */
+  .group-dropdown { position:relative; }
+  .group-btn { display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid var(--border);background:#f5f7fa;color:var(--text-muted);transition:all .15s;white-space:nowrap;user-select:none;font-family:Arial,sans-serif; }
+  .group-btn:hover,.group-btn.has-active { border-color:var(--accent);color:var(--accent);background:#eef6f5; }
+  .group-btn .arrow { font-size:9px;transition:transform .15s; }
+  .group-btn.open .arrow { transform:rotate(180deg); }
+  .group-menu { display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:300;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:180px;overflow:hidden;padding:4px 0; }
+  .group-menu.open { display:block; }
+  .group-menu-item { display:block;padding:8px 16px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;transition:background .1s;white-space:nowrap;font-family:Arial,sans-serif; }
+  .group-menu-item:hover { background:#f0f8f6;color:var(--accent); }
+  .group-menu-item.active { color:var(--accent);background:#eef6f5; }
+  .group-menu-item.all-group { border-bottom:1px solid var(--border);font-weight:700;color:var(--text-muted);font-size:11px; }
+
+  /* ── GITHUB MODAL ── */
+  .gh-modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:none;align-items:center;justify-content:center; }
+  .gh-modal-overlay.show { display:flex; }
+  .gh-modal { background:#fff;border-radius:12px;padding:28px 32px;width:480px;box-shadow:0 16px 48px rgba(0,0,0,.2);font-family:Arial,sans-serif; }
+  .gh-modal h2 { font-size:16px;font-weight:700;color:#1a2035;margin-bottom:6px; }
+  .gh-modal p { font-size:12px;color:#6b7394;margin-bottom:20px;line-height:1.5; }
+  .gh-modal label { font-size:11px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px; }
+  .gh-modal input { width:100%;padding:8px 12px;border:1px solid #dde1ea;border-radius:6px;font-size:13px;font-family:Arial,sans-serif;margin-bottom:16px;outline:none; }
+  .gh-modal input:focus { border-color:var(--accent); }
+  .gh-modal-btns { display:flex;gap:10px;justify-content:flex-end;margin-top:4px; }
+  .gh-btn { padding:8px 18px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:Arial,sans-serif; }
+  .gh-btn.primary { background:var(--accent);color:#fff; }
+  .gh-btn.primary:hover { opacity:.85; }
+  .gh-btn.secondary { background:#f0f2f5;color:#444; }
+  .gh-status { font-size:11px;margin-top:10px;min-height:16px; }
+  .gh-status.ok { color:#1a8a5a; }
+  .gh-status.err { color:#c0273f; }
+
+  /* ── CHECKBOX ITEMS IN DROPDOWNS ── */
+  .grp-check-item { display:flex;align-items:center;gap:9px;padding:7px 14px;cursor:pointer;font-size:12px;color:var(--text);transition:background .1s;white-space:nowrap; }
+  .grp-check-item:hover { background:#f0f8f6; }
+  .grp-check-item input[type=checkbox] { width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0; }
+  .grp-check-item.all-item { border-bottom:1px solid var(--border);font-weight:700;color:var(--text-muted);font-size:11px;background:#fafbfc; }
+  .grp-check-item.all-item:hover { background:#edf8f5; }
+  .grp-selected-count { display:inline-block;background:var(--accent);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px; }
+
+  /* ── PROJECT DROPDOWN ITEMS ── */
+  .proj-check-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; cursor: pointer; font-size: 13px;
+    color: var(--text); transition: background .1s;
+    border-bottom: 1px solid #f5f5f5; width: 100%;
+    box-sizing: border-box;
+  }
+  .proj-check-item:last-child { border-bottom: none; }
+  .proj-check-item:hover { background: #f0f8f6; }
+  .proj-check-item input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .proj-check-item.disabled { opacity: .45; cursor: not-allowed; }
+  .proj-check-item span { line-height: 1.3; }
+
+  .proj-res-pill {
+    padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 700;
+    cursor: pointer; border: 1.5px solid var(--border); background: #f5f7fa; color: var(--text-muted);
+    transition: all .12s; white-space: nowrap; user-select: none;
+  }
+  .proj-res-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .proj-res-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #b0b8cc; }
+
+  /* ── RESOURCE FILTER BAR ── */
+  .resource-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 12px 36px; background: #ffffff; border-bottom: 1px solid var(--border);
+  }
+  .res-pill {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    cursor: pointer; border: 2px solid var(--border); background: #f5f7fa; color: var(--text-muted);
+    transition: all .15s; white-space: nowrap; user-select: none;
+  }
+  .res-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .res-pill.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  .res-pill.all-pill { background: var(--surface2); }
+  .res-pill.all-pill.active { background: var(--accent); color: #fff; }
+
+  /* ── TABS ── */
+  .tabs { display: flex; border-bottom: 2px solid var(--border); padding: 0 36px; background: var(--surface); }
+  .tab { padding: 12px 22px; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .15s; user-select: none; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── DRILL-DOWN SECTION ── */
+  /* ── DRILL-DOWN ── */
+  .drilldown-wrap { margin-top: 12px; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .drilldown-scroll { overflow-x: auto; background: #ffffff; }
+  .dd-table { width: max-content; min-width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; background: #ffffff; color: #000000; }
+  .dd-table th { background: #f5f7fa; font-size: 11px; font-weight: 700; color: #000000; text-transform: uppercase; letter-spacing: .4px; padding: 10px 14px; text-align: left; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  .dd-table th.wk { text-align: center; width: var(--cell-w); min-width: var(--cell-w); max-width: var(--cell-w); padding: 0; }
+  .dd-table td { padding: 8px 14px; font-size: 12px; border-bottom: 1px solid #f0f2f5; white-space: nowrap; vertical-align: middle; background: #ffffff; color: #000000; }
+  .dd-table td.wk { text-align: center; font-size: 12px; color: #000000; font-weight: 600; padding: 8px 0; background: #ffffff; width: var(--cell-w); min-width: var(--cell-w); max-width: var(--cell-w); }
+  .dd-table td.wk.zero { color: #999; font-weight: 400; }
+  .dd-table tr.proj-row td { background: #f8fffe; font-weight: 700; font-size: 13px; color: #000000; border-top: 2px solid #e0e0e0; }
+  .dd-table tr.proj-row td.wk { color: #000000; background: #f8fffe; width: var(--cell-w); min-width: var(--cell-w); max-width: var(--cell-w); padding: 8px 0; text-align: center; }
+  .dd-table tr.task-row td { background: #ffffff; font-size: 12px; color: #000000; }
+  .dd-table tr.task-row td.wk { color: #000000; font-weight: 400; background: #ffffff; }
+  .dd-table tr.task-row { display: none; }
+  .dd-table tr.task-row.visible { display: table-row; }
+
+  .proj-row td:first-child { cursor: pointer; }
+  .proj-row:hover td { background: #f0f0f0 !important; }
+  .row-arrow { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; margin-right: 6px; font-size: 11px; color: #2c7a6e; transition: transform .2s; vertical-align: middle; }
+  .row-arrow.open { transform: rotate(90deg); }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">Processing Excel file…</div>
+</div>
+
+<div class="tooltip" id="tooltip">
+  <div class="tooltip-name" id="tt-name"></div>
+  <div class="tooltip-week" id="tt-week"></div>
+  <div class="tooltip-total" id="tt-total"></div>
+  <div class="tooltip-projects" id="tt-projects"></div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="view-toggle" style="position:absolute;left:50%;transform:translateX(-50%);">
+      <div class="tab active" onclick="switchTab('all')">Heatmap View</div>
+      <div class="tab" onclick="switchTab('task')">Task View</div>
+      <div class="tab" onclick="switchTab('project')">Project View</div>
+    </div>
+    <div class="header-left">
+      <svg class="logo-img" width="150" height="38" viewBox="0 0 150 38" xmlns="http://www.w3.org/2000/svg" aria-label="Cogsdale" style="height:38px;width:auto;display:block;vertical-align:middle;">
+        <text x="0" y="27" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="800" fill="#0f2f3a" letter-spacing="-0.6">COGSDALE</text>
+        <!-- Brand bracket icon (two stylized marks) -->
+        <g fill="#2c9a8a">
+          <!-- left mark -->
+          <rect x="112" y="3" width="4" height="32" rx="1"/>
+          <rect x="112" y="3" width="15" height="4" rx="1"/>
+          <rect x="112" y="31" width="15" height="4" rx="1"/>
+          <!-- right mark -->
+          <rect x="133" y="3" width="4" height="32" rx="1"/>
+          <rect x="122" y="3" width="15" height="4" rx="1"/>
+          <rect x="122" y="31" width="15" height="4" rx="1"/>
+        </g>
+      </svg>
+      <div class="logo-divider"></div>
+      <div class="title-block">
+        <h1>Resource Load Dashboard <span style="font-size:13px;font-weight:400;color:var(--text-muted);">v2.2</span></h1>
+        <span class="badge" style="display:inline-flex;margin-top:6px;max-width:300px;overflow:hidden;"><span class="badge-dot" style="flex-shrink:0;"></span><span id="data-badge" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No report loaded — upload a schedule report to begin</span></span>
+      </div>
+    </div>
+    <div class="upload-area" style="flex-direction:column;align-items:flex-end;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="upload-btn" onclick="document.getElementById('file-input').click()">↑ Upload Schedule Report</button>
+        <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFileUpload(event)">
+        <button class="upload-btn" style="background:#f0f2f5;color:#444;padding:7px 12px;" onclick="openGhModal()" title="GitHub auto-save settings">⚙</button>
+        <span class="refresh-status" id="refresh-status"></span>
+      </div>
+      <div class="legend" style="justify-content:flex-end;">
+        <div class="leg"><div class="leg-dot" style="background:#ffffff;border:1px solid #ccc"></div> 0 hrs</div>
+        <div class="leg"><div class="leg-dot" style="background:#c8f0d8"></div> 1 hr</div>
+        <div class="leg"><div class="leg-dot" style="background:#7acc9e"></div> ~22 hrs</div>
+        <div class="leg"><div class="leg-dot" style="background:#1a6b3a"></div> 42 hrs</div>
+        <div class="leg"><div class="leg-dot" style="background:#ffd0d8"></div> &gt;42 hrs ⚠</div>
+        <div class="leg"><div class="leg-dot" style="background:#b0b4c0"></div> Full week PTO</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RESOURCE FILTER BAR -->
+<div class="resource-bar" id="resource-bar"></div>
+
+
+
+<div class="toolbar" id="toolbar-row" style="display:none;">
+  <div id="project-selector" style="display:flex;align-items:center;gap:12px;width:100%;">
+    <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">PROJECT</label>
+    <div style="position:relative;" id="proj-dropdown-wrap">
+      <button id="proj-dropdown-btn" onclick="toggleProjDropdown(event)" style="min-width:300px;max-width:560px;padding:7px 36px 7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:Arial,sans-serif;cursor:pointer;text-align:left;position:relative;outline:none;">
+        <span id="proj-btn-label">Select up to 5 projects…</span>
+        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-muted);">▼</span>
+      </button>
+      <div id="proj-dropdown-list" onclick="event.stopPropagation()" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:400px;max-width:600px;max-height:320px;overflow-y:auto;"></div>
+    </div>
+    <span id="proj-count-badge" style="font-size:11px;color:var(--text-muted);"></span>
+    <!-- Resource filter pills — shown when projects are selected -->
+    <div id="proj-resource-filter" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;border-left:2px solid var(--border);padding-left:14px;margin-left:4px;">
+      <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;">SHOW</label>
+      <div id="proj-resource-pills" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <!-- BY RESOURCE VIEW -->
+  <div class="view active" id="view-all">
+    <div class="heatmap-wrap">
+      <table class="heatmap-table" id="heatmap-all"></table>
+    </div>
+  </div>
+
+  <!-- BY TASK VIEW -->
+  <div class="view" id="view-task">
+    <div id="task-resource-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;"></div>
+    <div id="task-view-content">
+      <p style="color:var(--text-muted);font-size:13px;">Select a resource from the group dropdowns above to see their project &amp; task breakdown.</p>
+    </div>
+  </div>
+
+  <!-- BY PROJECT VIEW -->
+  <div class="view" id="view-project">
+    <div class="heatmap-wrap">
+      <table class="heatmap-table" id="heatmap-proj"></table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ HELPERS ══
+function fmtWeekLabel(raw) {
+  const start = raw.split(' - ')[0].trim().split(' ')[0];
+  const parts = start.split('/');
+  if (parts.length < 2) return raw;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[parseInt(parts[0],10)-1] + ' ' + parseInt(parts[1],10);
+}
+
+// Abbreviate: strip QUO number, keep "Customer - Project Description"
+function abbreviateProject(proj) {
+  // Remove QUO-XXXXX from the string
+  let s = proj.replace(/\s*-?\s*QUO-[\w]+v?\d*/gi, '').trim();
+  // Remove leading/trailing dashes
+  s = s.replace(/^\s*[-–]\s*|\s*[-–]\s*$/g, '').trim();
+  // Clean up double spaces or double dashes
+  s = s.replace(/\s*-\s*-\s*/g, ' - ').trim();
+
+  // Customer name abbreviation map
+  const custMap = [
+    [/city of griffin/i,                          'Griffin'],
+    [/city of fredericton/i,                      'Fredericton'],
+    [/city of salisbury/i,                        'Salisbury'],
+    [/city of medicine hat/i,                     'Medicine Hat'],
+    [/florida keys aqueduct authority/i,           'FKAA'],
+    [/fort pierce utilities authority/i,           'Fort Pierce'],
+    [/hingham municipal lighting plant/i,          'Hingham'],
+    [/lake cities municipal utility authority/i,   'LCMUA'],
+    [/new smyrna beach utilities/i,               'New Smyrna Beach'],
+    [/new smyrna beach/i,                         'New Smyrna Beach'],
+    [/provident energy management inc/i,           'Provident Energy'],
+    [/provident energy management/i,              'Provident Energy'],
+    [/rockdale county government/i,               'Rockdale'],
+    [/sewerage and water board of new orleans/i,  'New Orleans'],
+    [/taunton/i,                                  'Taunton'],
+    [/water authority.*cayman/i,                  'Cayman'],
+    [/water authority[–-].*cayman/i,              'Cayman'],
+    [/antigua public utilities/i,                 'Antigua'],
+    [/z-cogsdale corporation/i,                   'Internal'],
+    [/lcmua/i,                                    'LCMUA'],
+  ];
+
+  for (const [re, abbr] of custMap) {
+    if (re.test(s)) {
+      // Replace customer name part with abbreviation; keep the rest (project description)
+      s = s.replace(re, abbr);
+      break;
+    }
+  }
+  // Clean up any leftover " -  - " or trailing/leading dashes
+  s = s.replace(/\s*-\s*-\s*/g, ' - ').replace(/^\s*[-–]\s*|\s*[-–]\s*$/g, '').trim();
+  return s || proj;
+}
+
+function cellClass(h, ptoHrs) {
+  if (ptoHrs && ptoHrs > 35) return 'pto';
+  if (h <= 0) return 'zero';
+  if (h > 42) return 'over';
+  return 'green';
+}
+function greenColor(h) {
+  // 1–45 mapped from light green (#c8f0d8) to dark green (#1a6b3a)
+  const t = Math.min(Math.max((h - 1) / 41, 0), 1);
+  const r = Math.round(200 - t * (200 - 26));
+  const g = Math.round(240 - t * (240 - 107));
+  const b = Math.round(216 - t * (216 - 58));
+  // text: dark green for light bg, white for dark bg
+  const textColor = t > 0.55 ? '#ffffff' : '#1a5c35';
+  return { bg: 'rgb(' + r + ',' + g + ',' + b + ')', text: textColor };
+}
+// Returns combined hours of the two time-off tasks for a resource/week
+function getPtoHours(resource, weekIdx) {
+  const ptoData = DATA.ptoHours || {};
+  const weeks = ptoData[resource];
+  return weeks ? (weeks[weekIdx] || 0) : 0;
+}
+function ptoDays(ptoHrs) {
+  return Math.round(ptoHrs / 7.5);
+}
+function fmt(h) { return ''; }
+function fmtCell(h, ptoHrs, cls) {
+  const days = ptoHrs ? Math.round(ptoHrs / 7.5) : 0;
+  let inner = '';
+  if (days > 0) {
+    inner = '<span style="font-size:12px;font-weight:700;line-height:1.3">PTO</span><span style="font-size:12px;font-weight:700;line-height:1.3">' + days + 'd</span>';
+  }
+  let style = '';
+  if (cls === 'green') {
+    const gc = greenColor(h);
+    style = ' style="background:' + gc.bg + ';color:' + gc.text + '"';
+  }
+  return '<div class="cell-inner ' + cls + '"' + style + '>' + inner + '</div>';
+}
+
+// ══ EMBEDDED DATA ══
+let DATA = {"weekLabels":[],"reportMeta":"","maxHours":42,"ptoHours":{},"resources":[],"resourceHours":{},"projects":[],"projectData":{},"resourceProjectBreakdown":{},"taskData":{}};
+
+// ══ SELECTED RESOURCE ══
+
+// ── RESOURCE GROUPS ──
+const RESOURCE_GROUPS = {
+  'CIS Consultants':       ['Allan Lapp','Hammad Saleem',"Jason O'Brien",'Jean Phillips','Lauren Russo','Marc Van Niekerk','Nicole Aubry','Norma Mayhew','Therese Antonini'],
+  'FIS Consultants':       ['Alcides Reyes','Arjun Anand','John Harlow'],
+  'Technical Consultants': ['Bhavya Chandrappa','Cory Jones','Daniel Kilgallon','Edin Beganovic','Michael Macdonald','Thomas Fonseca']
+};
+function getResourceGroup(n) {
+  for (const [g,m] of Object.entries(RESOURCE_GROUPS)) { if (m.includes(n)) return g; }
+  return 'Other';
+}
+// Selected resources = Set of names. Default = all CIS consultants.
+let selectedResources = new Set(RESOURCE_GROUPS['CIS Consultants']);
+let currentTab = 'all';
+
+function selectResource(name) {
+  selectedResource = name;
+  buildResourceBar();
+  renderAllView();
+}
+
+function buildResourceBar() {
+  const bar = document.getElementById('resource-bar');
+  bar.innerHTML = '';
+
+  const groupMap = {};
+  DATA.resources.forEach(r => { const g=getResourceGroup(r); if(!groupMap[g]) groupMap[g]=[]; groupMap[g].push(r); });
+  Object.keys(RESOURCE_GROUPS).forEach(g => { if(!groupMap[g]) groupMap[g]=[]; });
+  const order = ['CIS Consultants','FIS Consultants','Technical Consultants','Other'];
+  const groups = order.filter(g => groupMap[g] !== undefined);
+  Object.keys(groupMap).forEach(g => { if(!groups.includes(g)) groups.push(g); });
+
+  groups.forEach(grp => {
+    const members = (RESOURCE_GROUPS[grp] || []).filter(r => DATA.resources.includes(r));
+    const checkedCount = members.filter(r => selectedResources.has(r)).length;
+    const wrap = document.createElement('div'); wrap.className = 'group-dropdown';
+
+    const btn = document.createElement('div');
+    btn.className = 'group-btn' + (checkedCount > 0 ? ' has-active' : '');
+    btn.innerHTML = grp
+      + (checkedCount > 0 ? ' <span class="grp-selected-count">' + checkedCount + '</span>' : '')
+      + ' <span class="arrow">▼</span>';
+    btn.onclick = (e) => { e.stopPropagation(); toggleGroupMenu(grp); };
+
+    const menu = document.createElement('div');
+    menu.className = 'group-menu'; menu.id = 'grp-menu-' + grp.replace(/\s+/g, '-');
+
+    // "All [Group]" checkbox
+    const allItem = document.createElement('label');
+    allItem.className = 'grp-check-item all-item';
+    const allCb = document.createElement('input'); allCb.type = 'checkbox';
+    const allChecked = members.length > 0 && members.every(r => selectedResources.has(r));
+    const allIndeterminate = !allChecked && members.some(r => selectedResources.has(r));
+    allCb.checked = allChecked; allCb.indeterminate = allIndeterminate;
+    allCb.onchange = () => {
+      if (allCb.checked) members.forEach(r => selectedResources.add(r));
+      else members.forEach(r => selectedResources.delete(r));
+      // Update individual checkboxes in this menu
+      menu.querySelectorAll('.grp-check-item:not(.all-item) input[type=checkbox]').forEach((cb2, i) => {
+        if (members[i]) cb2.checked = selectedResources.has(members[i]);
+      });
+      updateGroupBtnBadge(grp, members, btn);
+      renderAllView();
+    };
+    allItem.appendChild(allCb);
+    allItem.appendChild(Object.assign(document.createElement('span'), { textContent: 'All ' + grp }));
+    menu.appendChild(allItem);
+
+    // Individual member checkboxes
+    members.forEach(r => {
+      const item = document.createElement('label');
+      item.className = 'grp-check-item';
+      const cb = document.createElement('input'); cb.type = 'checkbox';
+      cb.checked = selectedResources.has(r);
+      cb.onchange = () => {
+        if (cb.checked) selectedResources.add(r); else selectedResources.delete(r);
+        // Update allCb indeterminate state in this menu
+        const allCbEl = menu.querySelector('.grp-check-item.all-item input');
+        if (allCbEl) {
+          const allChecked = members.length > 0 && members.every(m => selectedResources.has(m));
+          const anyChecked = members.some(m => selectedResources.has(m));
+          allCbEl.checked = allChecked;
+          allCbEl.indeterminate = !allChecked && anyChecked;
+        }
+        updateGroupBtnBadge(grp, members, btn);
+        renderAllView();
+      };
+      item.appendChild(cb);
+      item.appendChild(Object.assign(document.createElement('span'), { textContent: r.split(' ')[0], title: r }));
+      menu.appendChild(item);
+    });
+
+    if (members.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:8px 14px;font-size:11px;color:var(--text-muted);font-style:italic;';
+      empty.textContent = 'Not in current report';
+      menu.appendChild(empty);
+    }
+
+    wrap.appendChild(btn); wrap.appendChild(menu); bar.appendChild(wrap);
+  });
+}
+
+function toggleGroupMenu(grp) {
+  const menu=document.getElementById('grp-menu-'+grp.replace(/\s+/g,'-'));
+  const btn=menu?menu.previousSibling:null;
+  const isOpen=menu&&menu.classList.contains('open');
+  closeAllGroupMenus();
+  if(!isOpen&&menu){menu.classList.add('open');if(btn)btn.classList.add('open');}
+}
+function updateGroupBtnBadge(grp, members, btn) {
+  const checkedCount = members.filter(r => selectedResources.has(r)).length;
+  const isOpen = btn.classList.contains('open');
+  const badge = checkedCount > 0 ? ' <span class="grp-selected-count">' + checkedCount + '</span>' : '';
+  btn.innerHTML = grp + badge + ' <span class="arrow">▼</span>';
+  btn.className = 'group-btn' + (checkedCount > 0 ? ' has-active' : '') + (isOpen ? ' open' : '');
+}
+function closeAllGroupMenus() {
+  document.querySelectorAll('.group-menu.open').forEach(m=>m.classList.remove('open'));
+  document.querySelectorAll('.group-btn.open').forEach(b=>b.classList.remove('open'));
+}
+function selectResourceGroup(grp) { selectedResource='group:'+grp; buildResourceBar(); renderAllView(); }
+document.addEventListener('click',function(e){if(!e.target.closest('.group-dropdown')&&!e.target.closest('.gh-modal-overlay'))closeAllGroupMenus();});
+
+// ══ RENDER BY RESOURCE VIEW ══
+function renderAllView() {
+  const { weekLabels, resources, resourceHours } = DATA;
+  const t = document.getElementById('heatmap-all');
+  let h = '<thead><tr><th class="name-col" style="background:transparent;padding:0;"><div style="background:#eff1f5;border-radius:6px;width:100%;height:40px;"></div></th>';
+  weekLabels.forEach(w => { h += '<th title="' + w + '">' + fmtWeekLabel(w) + '</th>'; });
+  h += '</tr></thead><tbody>';
+  const resourcesToShow = resources.filter(r => selectedResources.has(r));
+  if (resourcesToShow.length === 0) {
+    h += '<tr><td colspan="' + (weekLabels.length+1) + '" style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">No resources selected — use the group dropdowns above to select resources.</td></tr>';
+  } else {
+    resourcesToShow.forEach(r => {
+      h += '<tr class="resource-row"><td class="resource-name-cell">' + r + '</td>';
+      resourceHours[r].forEach((hrs, wi) => {
+        const pto = getPtoHours(r, wi); const cls = cellClass(hrs, pto);
+        h += '<td class="hour-cell" data-res="' + r.replace(/"/g,'&quot;') + '" data-wi="' + wi + '" onmouseenter="handleEnter(event,this)" onmouseleave="hideTooltip()">' + fmtCell(hrs, pto, cls) + '</td>';
+      });
+      h += '</tr>';
+    });
+  }
+  h += '</tbody>';
+  t.innerHTML = h;
+}
+
+// ══ RENDER BY TASK VIEW ══
+let selectedTaskResource = '';
+
+function buildTaskResourceBar() {
+  const bar = document.getElementById('task-resource-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+
+  const groupMap = {};
+  DATA.resources.forEach(r => { const g=getResourceGroup(r); if(!groupMap[g]) groupMap[g]=[]; groupMap[g].push(r); });
+  Object.keys(RESOURCE_GROUPS).forEach(g => { if(!groupMap[g]) groupMap[g]=[]; });
+  const order = ['CIS Consultants','FIS Consultants','Technical Consultants','Other'];
+  const groups = order.filter(g => groupMap[g] !== undefined);
+  Object.keys(groupMap).forEach(g => { if(!groups.includes(g)) groups.push(g); });
+
+  groups.forEach(grp => {
+    const members = (RESOURCE_GROUPS[grp] || []).filter(r => DATA.resources.includes(r));
+    const hasActive = members.includes(selectedTaskResource);
+    const wrap = document.createElement('div'); wrap.className = 'group-dropdown';
+    const btn = document.createElement('div');
+    btn.className = 'group-btn' + (hasActive ? ' has-active' : '');
+    btn.innerHTML = grp + ' <span class="arrow">▼</span>';
+    btn.onclick = (e) => { e.stopPropagation(); toggleTaskGroupMenu(grp); };
+    const menu = document.createElement('div');
+    menu.className = 'group-menu'; menu.id = 'task-grp-menu-' + grp.replace(/\s+/g, '-');
+
+    if (members.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:8px 14px;font-size:11px;color:var(--text-muted);font-style:italic;';
+      empty.textContent = 'Not in current report';
+      menu.appendChild(empty);
+    } else {
+      members.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'group-menu-item' + (selectedTaskResource === r ? ' active' : '');
+        item.textContent = r.split(' ')[0]; item.title = r;
+        item.onclick = () => { closeAllTaskGroupMenus(); selectTaskResource(r); };
+        menu.appendChild(item);
+      });
+    }
+    wrap.appendChild(btn); wrap.appendChild(menu); bar.appendChild(wrap);
+  });
+}
+
+function toggleTaskGroupMenu(grp) {
+  const menu = document.getElementById('task-grp-menu-' + grp.replace(/\s+/g, '-'));
+  const btn = menu ? menu.previousSibling : null;
+  const isOpen = menu && menu.classList.contains('open');
+  closeAllTaskGroupMenus();
+  if (!isOpen && menu) { menu.classList.add('open'); if (btn) btn.classList.add('open'); }
+}
+
+function closeAllTaskGroupMenus() {
+  document.querySelectorAll('[id^="task-grp-menu-"].open').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.group-btn.open').forEach(b => b.classList.remove('open'));
+}
+
+function selectTaskResource(r) {
+  selectedTaskResource = r;
+  buildTaskResourceBar();
+  renderTaskView();
+}
+
+function buildTaskSelect() { buildTaskResourceBar(); }
+
+function renderTaskView() {
+  const resource = selectedTaskResource;
+  const container = document.getElementById('task-view-content');
+  if (!resource) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Select a resource above to see their project &amp; task breakdown.</p>';
+    return;
+  }
+  const { weekLabels, resourceHours } = DATA;
+  const resHours = resourceHours[resource] || [];
+
+  const breakdown = (DATA.resourceProjectBreakdown || {})[resource] || {};
+  const projects = Object.entries(breakdown)
+    .filter(([, weeks]) => weeks.some(h => h > 0))
+    .sort((a, b) => { const fa=a[1].find(h=>h>0)||0,fb=b[1].find(h=>h>0)||0; return fb-fa; });
+
+  let html = '<div class="drilldown-wrap"><div class="drilldown-scroll"><table class="dd-table"><thead><tr>';
+  // Name col header
+  html += '<th style="text-align:left;padding:10px 14px;min-width:280px;position:sticky;left:0;background:#f5f7fa;z-index:10;vertical-align:bottom;">PROJECT / TASK</th>';
+  // Heat cell + week label stacked in each th
+  weekLabels.forEach((w, wi) => {
+    const hrs = resHours[wi] || 0;
+    const pto = getPtoHours(resource, wi);
+    const cls = cellClass(hrs, pto);
+    let bg = '#ffffff', fg = '#999';
+    if (cls === 'green') { const gc = greenColor(hrs); bg = gc.bg; fg = gc.text; }
+    else if (cls === 'pto')  { bg = '#b0b4c0'; fg = '#ffffff'; }
+    else if (cls === 'over') { bg = '#ffd0d8'; fg = '#b8001e'; }
+    html += '<th class="wk" style="padding:3px 0 4px;vertical-align:bottom;background:transparent;border:none;">'
+      + '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'
+      + '<div data-res="' + resource.replace(/"/g,'&quot;') + '" data-wi="' + wi + '" onmouseenter="handleEnter(event,this)" onmouseleave="hideTooltip()" style="width:36px;height:28px;border-radius:5px;background:' + bg + ';cursor:pointer;flex-shrink:0;"></div>'
+      + '<span style="font-size:11px;font-weight:700;color:#444c6a;white-space:nowrap;">' + fmtWeekLabel(w) + '</span>'
+      + '</div></th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  projects.forEach(([proj, weeks], idx) => {
+    const taskData = (DATA.taskData && DATA.taskData[resource] && DATA.taskData[resource][proj]) || null;
+    const hasTasks = taskData && Object.values(taskData).some(tw => tw.some(h => h > 0));
+    const isExp = !!ddExpanded[idx];
+    html += '<tr class="proj-row" data-idx="' + idx + '"><td class="proj-toggle">';
+    if (hasTasks) html += '<span class="row-arrow' + (isExp ? ' open' : '') + '">&#9654;</span>';
+    else html += '<span style="display:inline-block;width:24px;"></span>';
+    html += abbreviateProject(proj) + '</td>';
+    weeks.forEach(h => { html += '<td class="wk' + (h<=0?' zero':'') + '">' + (h>0?h.toFixed(1):'') + '</td>'; });
+    html += '</tr>';
+    if (hasTasks) {
+      Object.entries(taskData)
+        .filter(([, tw]) => tw.some(h => h > 0))
+        .sort((a,b) => { const fa=a[1].find(h=>h>0)||0,fb=b[1].find(h=>h>0)||0; return fb-fa; })
+        .forEach(([task, tw]) => {
+          html += '<tr class="task-row" data-idx="' + idx + '" style="display:' + (isExp ? '' : 'none') + ';">';
+          html += '<td style="padding-left:44px;font-size:12px;color:#000000;">&#8627; ' + task + '</td>';
+          tw.forEach(h => { html += '<td class="wk' + (h<=0?' zero':'') + '">' + (h>0?h.toFixed(1):'') + '</td>'; });
+          html += '</tr>';
+        });
+    }
+  });
+
+  // Weekly total footer
+  html += '<tfoot><tr style="border-top:2px solid #ccc;">';
+  html += '<td style="padding:9px 14px;font-weight:700;font-size:14px;color:#000;background:#f5f7fa;position:sticky;left:0;">Weekly Total</td>';
+  weekLabels.forEach((w, wi) => {
+    const total = resHours[wi] || 0;
+    html += '<td class="wk" style="font-weight:700;font-size:12px;color:#000;background:#f5f7fa;border-top:2px solid #ccc;"><span style="font-size:14px;">' + (total > 0 ? total.toFixed(1) : '') + '</span></td>';
+  });
+  html += '</tr></tfoot></tbody></table></div></div>';
+  container.innerHTML = html;
+}
+
+// ══ RENDER PROJECT VIEW ══
+function buildProjResourceFilter() {
+  const filterWrap = document.getElementById('proj-resource-filter');
+  const pillsWrap  = document.getElementById('proj-resource-pills');
+  if (!filterWrap || !pillsWrap) return;
+  if (selectedProjects.length === 0) { filterWrap.style.display = 'none'; return; }
+
+  // Collect all unique resources across selected projects
+  const allRes = new Set();
+  selectedProjects.forEach(proj => {
+    const pd = DATA.projectData[proj] || {};
+    Object.keys(pd).forEach(r => { if (pd[r].some(h => h > 0)) allRes.add(r); });
+  });
+
+  if (allRes.size <= 1) { filterWrap.style.display = 'none'; return; }
+
+  // Remove any selectedProjResources not in allRes
+  for (const r of [...selectedProjResources]) { if (!allRes.has(r)) selectedProjResources.delete(r); }
+
+  filterWrap.style.display = 'flex';
+  pillsWrap.innerHTML = '';
+
+  // "All" pill
+  const allPill = document.createElement('div');
+  allPill.className = 'proj-res-pill' + (selectedProjResources.size === 0 ? ' active' : '');
+  allPill.textContent = 'All';
+  allPill.onclick = () => { selectedProjResources.clear(); buildProjResourceFilter(); renderProjectView(); };
+  pillsWrap.appendChild(allPill);
+
+  // One pill per resource (first name only)
+  [...allRes].sort().forEach(r => {
+    const pill = document.createElement('div');
+    pill.className = 'proj-res-pill' + (selectedProjResources.has(r) ? ' active' : '');
+    pill.textContent = r.split(' ')[0];
+    pill.title = r;
+    pill.onclick = () => {
+      if (selectedProjResources.has(r)) selectedProjResources.delete(r);
+      else selectedProjResources.add(r);
+      buildProjResourceFilter(); renderProjectView();
+    };
+    pillsWrap.appendChild(pill);
+  });
+}
+
+function renderProjectView() {
+  buildProjResourceFilter();
+  const { weekLabels, projectData } = DATA;
+  const t = document.getElementById('heatmap-proj');
+  if (selectedProjects.length === 0) {
+    t.innerHTML = '<tbody><tr><td colspan="2" style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">Select one or more projects above to view the heatmap.</td></tr></tbody>';
+    return;
+  }
+  let html = '<thead><tr><th class="name-col" style="background:transparent;padding:0;"><div style="background:#eff1f5;border-radius:6px;width:100%;height:40px;"></div></th>';
+  weekLabels.forEach(w => { html += '<th title="' + w + '">' + fmtWeekLabel(w) + '</th>'; });
+  html += '</tr></thead><tbody>';
+  selectedProjects.forEach(proj => {
+    const projResources = projectData[proj];
+    let resNames = projResources ? Object.keys(projResources).filter(r => projResources[r].some(h => h > 0)) : [];
+    // Apply resource filter
+    if (selectedProjResources.size > 0) resNames = resNames.filter(r => selectedProjResources.has(r));
+    html += '<tr><td colspan="' + (weekLabels.length+1) + '" style="padding:8px 14px 4px;background:#f0f8f6;font-size:12px;font-weight:700;color:var(--accent);border-top:2px solid #c5deda;">' + abbreviateProject(proj) + '</td></tr>';
+    if (resNames.length === 0) {
+      html += '<tr><td colspan="' + (weekLabels.length+1) + '" style="padding:10px 14px;color:var(--text-muted);font-size:12px;">No active hours for selected resources.</td></tr>';
+    } else {
+      resNames.forEach(r => {
+        html += '<tr class="resource-row"><td class="resource-name-cell">' + r + '</td>';
+        projResources[r].forEach((hrs, wi) => {
+          const pto2 = getPtoHours(r, wi); const cls2 = cellClass(hrs, pto2);
+          html += '<td class="hour-cell" data-res="' + r.replace(/"/g,'&quot;') + '" data-wi="' + wi + '" data-proj="' + proj.replace(/"/g,'&quot;') + '" onmouseenter="handleEnter(event,this)" onmouseleave="hideTooltip()">' + fmtCell(hrs, pto2, cls2) + '</td>';
+        });
+        html += '</tr>';
+      });
+    }
+  });
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
+// ══ TOOLTIP ══
+function handleEnter(e, cell) {
+  const resource = cell.getAttribute('data-res');
+  const weekIdx  = parseInt(cell.getAttribute('data-wi'), 10);
+  const proj     = cell.getAttribute('data-proj') || null;
+  showTooltip(e, resource, weekIdx, proj);
+}
+function showTooltip(e, resource, weekIdx, projectFilter) {
+  const tt = document.getElementById('tooltip');
+  const hrs = (DATA.resourceHours[resource] || [])[weekIdx] || 0;
+  document.getElementById('tt-name').textContent = resource;
+  document.getElementById('tt-week').textContent = DATA.weekLabels[weekIdx] || '';
+  const total = projectFilter ? ((DATA.projectData[projectFilter]||{})[resource]||[])[weekIdx]||0 : hrs;
+  const ptoHrs = getPtoHours(resource, weekIdx);
+  const ptoDaysCount = ptoDays(ptoHrs);
+  const isFullPto = ptoHrs > 35;
+  const cls = isFullPto ? 'pto-label' : total > 42 ? 'over' : total > 35 ? 'warn' : 'ok';
+  const totEl = document.getElementById('tt-total');
+  totEl.className = 'tooltip-total ' + cls;
+  if (isFullPto) totEl.textContent = '🏖 PTO ' + ptoDaysCount + ' day' + (ptoDaysCount !== 1 ? 's' : '') + ' — Full Week Off';
+  else if (ptoHrs > 0) totEl.textContent = (total > 42 ? '⚠ ' + total.toFixed(1) + ' hrs — OVER CAPACITY' : total.toFixed(1) + ' hrs') + '  |  🏖 PTO ' + ptoDaysCount + 'd';
+  else totEl.textContent = total > 42 ? '⚠ ' + total.toFixed(1) + ' hrs — OVER CAPACITY' : total.toFixed(1) + ' hrs';
+  const breakdown = (DATA.resourceProjectBreakdown || {})[resource] || {};
+  let projHTML = '';
+  Object.entries(breakdown).sort((a,b)=>(b[1][weekIdx]||0)-(a[1][weekIdx]||0)).forEach(([proj, weeks]) => {
+    const h = weeks[weekIdx];
+    if (h > 0) projHTML += '<div class="tooltip-proj-row"><span class="tooltip-proj-name" title="' + proj + '">' + abbreviateProject(proj) + '</span><span>' + h.toFixed(1) + ' h</span></div>';
+  });
+  document.getElementById('tt-projects').innerHTML = projHTML || '<span style="color:var(--text-dim);font-size:11px">No hours this week</span>';
+  tt.classList.add('visible');
+  positionTooltip(e, tt);
+}
+function positionTooltip(e, tt) {
+  const pad=14,vw=window.innerWidth,vh=window.innerHeight;
+  let x=e.clientX+pad,y=e.clientY+pad;
+  if(x+360>vw) x=e.clientX-360-pad;
+  if(y+280>vh) y=e.clientY-280-pad;
+  tt.style.left=x+'px'; tt.style.top=y+'px';
+}
+document.addEventListener('mousemove',e=>{const tt=document.getElementById('tooltip');if(tt.classList.contains('visible'))positionTooltip(e,tt);});
+function hideTooltip(){document.getElementById('tooltip').classList.remove('visible');}
+
+// ══ LOADING ══
+function showLoading(msg){document.getElementById('loadingText').textContent=msg;document.getElementById('loadingOverlay').classList.add('show');}
+function hideLoading(){document.getElementById('loadingOverlay').classList.remove('show');}
+function loadScript(src,cb){const s=document.createElement('script');s.src=src;s.onload=cb;document.head.appendChild(s);}
+
+// ══ TABS ══
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.view-toggle .tab').forEach(t => {
+    t.classList.toggle('active',
+      (t.textContent.trim()==='Heatmap View' && tab==='all') ||
+      (t.textContent.trim()==='Task View' && tab==='task') ||
+      (t.textContent.trim()==='Project View' && tab==='project')
+    );
+  });
+  document.getElementById('view-all').classList.toggle('active', tab==='all');
+  document.getElementById('view-task').classList.toggle('active', tab==='task');
+  document.getElementById('view-project').classList.toggle('active', tab==='project');
+  const resourceBar = document.getElementById('resource-bar');
+  const toolbar = document.getElementById('toolbar-row');
+  if (resourceBar) resourceBar.style.display = tab==='all' ? 'flex' : 'none';
+  if (toolbar) toolbar.style.display = tab==='project' ? 'flex' : 'none';
+  if (tab==='all') renderAllView();
+  if (tab==='task') { buildTaskResourceBar(); renderTaskView(); }
+  if (tab==='project') { buildProjDropdown(); updateProjBtnLabel(); renderProjectView(); }
+}
+
+// ══ PROJECT CHECKBOX DROPDOWN ══
+let selectedProjects = [];
+let selectedProjResources = new Set(); // empty = show all
+function toggleProjDropdown(e){
+  if(e)e.stopPropagation();
+  const l=document.getElementById('proj-dropdown-list');
+  if(!l)return;
+  const opening = l.style.display==='none';
+  l.style.display = opening ? 'block' : 'none';
+  if(opening){
+    // Reset: clear old input so buildProjDropdown rebuilds the shell fresh
+    const oldInput = document.getElementById('proj-search-input');
+    if(oldInput) { oldInput.value=''; }
+    buildProjDropdown();
+    setTimeout(()=>{ const s=document.getElementById('proj-search-input'); if(s)s.focus(); },50);
+  }
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#proj-dropdown-wrap')){const l=document.getElementById('proj-dropdown-list');if(l)l.style.display='none';}
+  if(!e.target.closest('.group-dropdown')&&!e.target.closest('.gh-modal-overlay')) { closeAllGroupMenus(); closeAllTaskGroupMenus(); }
+});
+function projSortKey(p) {
+  const u = p.toUpperCase();
+  if (/MANAGED.?SERVICES/i.test(p)) return 3;
+  if (/NEXUS|\bCIS\b/.test(u)) return 0;
+  if (/\bBC\b|BUSINESS.?CENTRAL/.test(u)) return 1;
+  return 2;
+}
+
+function buildProjItems(searchVal) {
+  // Only re-renders the items, never touches the search input
+  let itemsWrap = document.getElementById('proj-items-wrap');
+  if (!itemsWrap) return;
+  itemsWrap.innerHTML = '';
+  const lowerFilter = (searchVal || '').toLowerCase();
+  const sorted = [...DATA.projects]
+    .filter(p => !lowerFilter || abbreviateProject(p).toLowerCase().includes(lowerFilter) || p.toLowerCase().includes(lowerFilter))
+    .sort((a,b) => { const ka=projSortKey(a),kb=projSortKey(b); if(ka!==kb)return ka-kb; return a.localeCompare(b); });
+  if (sorted.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:12px 14px;font-size:12px;color:var(--text-muted);text-align:center;';
+    empty.textContent = 'No projects match your search.';
+    itemsWrap.appendChild(empty); return;
+  }
+  sorted.forEach(p => {
+    const isChecked = selectedProjects.includes(p);
+    const isDisabled = !isChecked && selectedProjects.length >= 5;
+    const item = document.createElement('label');
+    item.className = 'proj-check-item' + (isDisabled ? ' disabled' : '');
+    const cb = document.createElement('input'); cb.type = 'checkbox';
+    cb.checked = isChecked; cb.disabled = isDisabled;
+    cb.onchange = function() {
+      if (cb.checked) { if (selectedProjects.length < 5) selectedProjects.push(p); }
+      else { selectedProjects = selectedProjects.filter(x => x !== p); }
+      updateProjBtnLabel();
+      buildProjItems(document.getElementById('proj-search-input') ? document.getElementById('proj-search-input').value : '');
+      renderProjectView();
+    };
+    const span = document.createElement('span'); span.textContent = abbreviateProject(p);
+    item.appendChild(cb); item.appendChild(span); itemsWrap.appendChild(item);
+  });
+}
+
+function buildProjDropdown() {
+  const list = document.getElementById('proj-dropdown-list'); if (!list) return;
+  // Only build the shell once; after that just refresh items
+  if (!document.getElementById('proj-search-input')) {
+    list.innerHTML = '';
+    // Sticky search header
+    const searchWrap = document.createElement('div');
+    searchWrap.style.cssText = 'padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;z-index:1;';
+    const searchInput = document.createElement('input');
+    searchInput.id = 'proj-search-input'; searchInput.type = 'text';
+    searchInput.placeholder = '🔍 Search projects…';
+    searchInput.style.cssText = 'width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:Arial,sans-serif;outline:none;box-sizing:border-box;';
+    searchInput.oninput = function() { buildProjItems(this.value); };
+    searchInput.onclick = function(e) { e.stopPropagation(); };
+    searchWrap.appendChild(searchInput);
+    list.appendChild(searchWrap);
+    // Scrollable items container
+    const itemsWrap = document.createElement('div');
+    itemsWrap.id = 'proj-items-wrap';
+    list.appendChild(itemsWrap);
+  }
+  buildProjItems('');
+}
+function updateProjBtnLabel(){
+  const lbl=document.getElementById('proj-btn-label');const badge=document.getElementById('proj-count-badge');
+  if(!lbl||!badge) return;
+  if(selectedProjects.length===0){lbl.textContent='Select up to 5 projects…';badge.textContent='';}
+  else{lbl.textContent=selectedProjects.map(p=>abbreviateProject(p)).join(', ').substring(0,60)+(selectedProjects.length>1?'…':'');badge.textContent=selectedProjects.length+' selected';}
+}
+
+// ══ DRILLDOWN EXPAND/COLLAPSE ══
+const ddExpanded = {};
+document.addEventListener('click',function(e){
+  const cell=e.target.closest('td.proj-toggle');if(!cell)return;
+  const row=cell.parentElement;const idx=row.dataset.idx;if(idx===undefined)return;
+  ddExpanded[idx]=!ddExpanded[idx];
+  const arrow=cell.querySelector('.row-arrow');if(arrow)arrow.classList.toggle('open',!!ddExpanded[idx]);
+  const tbody=row.parentElement;
+  tbody.querySelectorAll('tr.task-row[data-idx="'+idx+'"]').forEach(function(tr){tr.style.display=ddExpanded[idx]?'table-row':'none';});
+});
+
+// ══ PARSE EXCEL ══
+function parseExcel(buffer, filename) {
+  if(!window.XLSX){loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',()=>parseExcel(buffer,filename));return;}
+  try {
+    const wb=XLSX.read(buffer,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    let reportMeta='';
+    for(let i=0;i<Math.min(8,raw.length);i++){const cell=raw[i]&&raw[i][0];if(cell&&typeof cell==='string'&&cell.startsWith('Generated')){reportMeta=cell;break;}}
+    let headerIdx=-1;
+    for(let i=0;i<raw.length;i++){if(raw[i]&&raw[i][0]==='First Name'){headerIdx=i;break;}}
+    if(headerIdx<0){alert('Could not find header row.');hideLoading();return;}
+    const headers=raw[headerIdx];
+    const weekCols=[],weekLabels=[];
+    headers.forEach((h,i)=>{if(h&&typeof h==='string'&&/\d{2}\/\d{2}\/\d{2}/.test(h)){weekCols.push(i);weekLabels.push(h.replace(/\n/g,' '));}});
+    let curFirst=null,curLast=null;
+    const PTO_TASKS=new Set(['Time Off - Stat. Holidays','Time Off - Vacation & Personal Time']);
+    const parsed=raw.slice(headerIdx+1).map(r=>{
+      if(!r)return null;if(r[0])curFirst=r[0];if(r[1])curLast=r[1];
+      return{firstName:curFirst||'',lastName:curLast||'',project:r[3]||'',name:r[4]||'',hours:weekCols.map(ci=>parseFloat(r[ci])||0)};
+    }).filter(Boolean);
+    const taskRows=parsed.filter(r=>{const full=(r.firstName+' '+r.lastName).trim();return r.name!==full&&r.name!==r.project;});
+    const resourceMap={},projectMap={},projBreakdown={},ptoMap={},taskDataMap={};
+    taskRows.forEach(r=>{
+      const resource=(r.firstName+' '+r.lastName).trim(),proj=r.project,task=r.name;
+      if(!resource)return;
+      if(!resourceMap[resource])resourceMap[resource]=new Array(weekLabels.length).fill(0);
+      if(!projBreakdown[resource])projBreakdown[resource]={};
+      if(!taskDataMap[resource])taskDataMap[resource]={};
+      if(PTO_TASKS.has(task)){if(!ptoMap[resource])ptoMap[resource]=new Array(weekLabels.length).fill(0);}
+      r.hours.forEach((h,i)=>{
+        resourceMap[resource][i]=Math.round((resourceMap[resource][i]+h)*100)/100;
+        if(proj){if(!projBreakdown[resource][proj])projBreakdown[resource][proj]=new Array(weekLabels.length).fill(0);projBreakdown[resource][proj][i]=Math.round((projBreakdown[resource][proj][i]+h)*100)/100;}
+        if(proj&&task){if(!taskDataMap[resource][proj])taskDataMap[resource][proj]={};if(!taskDataMap[resource][proj][task])taskDataMap[resource][proj][task]=new Array(weekLabels.length).fill(0);taskDataMap[resource][proj][task][i]=Math.round((taskDataMap[resource][proj][task][i]+h)*100)/100;}
+        if(PTO_TASKS.has(task)&&ptoMap[resource])ptoMap[resource][i]=Math.round((ptoMap[resource][i]+h)*100)/100;
+        if(proj&&!proj.startsWith('z-Cogsdale')){if(!projectMap[proj])projectMap[proj]={};if(!projectMap[proj][resource])projectMap[proj][resource]=new Array(weekLabels.length).fill(0);projectMap[proj][resource][i]=Math.round((projectMap[proj][resource][i]+h)*100)/100;}
+      });
+    });
+    DATA={weekLabels,reportMeta,maxHours:42,ptoHours:ptoMap,resources:Object.keys(resourceMap),resourceHours:resourceMap,projects:Object.keys(projectMap).sort(),projectData:projectMap,resourceProjectBreakdown:projBreakdown,taskData:taskDataMap};
+    try{localStorage.setItem('cogsdale_dashboard_data',JSON.stringify(DATA));}catch(e){}
+    // Reset selections for new data
+    selectedResources=new Set((RESOURCE_GROUPS['CIS Consultants']||[]).filter(r=>DATA.resources.includes(r)));
+    selectedProjects=[];
+    initUI(filename);
+    hideLoading();
+    const now=new Date();
+    const rs=document.getElementById('refresh-status'); if(rs) rs.textContent='✓ Uploaded '+now.toLocaleDateString()+' '+now.toLocaleTimeString();
+  }catch(err){console.error(err);alert('Error: '+err.message);hideLoading();}
+}
+
+// ══ INIT UI ══
+function initUI(label) {
+  const wl = DATA.weekLabels;
+  const meta = (DATA.reportMeta||'').replace(/^Generated on behalf of .+ on /i,'');
+  const badge=document.getElementById('data-badge'); if(badge) badge.textContent = meta ? 'Updated on: '+meta : 'No report loaded — upload a schedule report to begin';
+  buildProjDropdown(); updateProjBtnLabel();
+  buildResourceBar();
+  if (currentTab==='all') renderAllView();
+  else if (currentTab==='task') { buildTaskResourceBar(); renderTaskView(); }
+  else renderProjectView();
+}
+
+// ── GITHUB AUTO-SAVE ──
+const GITHUB_STORAGE_KEY = 'cogsdale_github_settings';
+function getGhSettings(){try{return JSON.parse(localStorage.getItem(GITHUB_STORAGE_KEY)||'null');}catch(e){return null;}}
+function openGhModal(){
+  const s=getGhSettings()||{};
+  document.getElementById('gh-token-input').value=s.token||'';
+  document.getElementById('gh-owner-input').value=s.owner||'PMO-Cogsdale';
+  document.getElementById('gh-repo-input').value=s.repo||'ResourceSchedule';
+  document.getElementById('gh-path-input').value=s.path||'schedule.xlsx';
+  document.getElementById('gh-modal-status').textContent='';
+  document.getElementById('gh-modal-overlay').classList.add('show');
+}
+function closeGhModal(){document.getElementById('gh-modal-overlay').classList.remove('show');}
+function clearGhToken(){localStorage.removeItem(GITHUB_STORAGE_KEY);document.getElementById('gh-token-input').value='';setGhStatus('Token cleared.',false);}
+function saveGhSettings(){
+  const s={token:document.getElementById('gh-token-input').value.trim(),owner:document.getElementById('gh-owner-input').value.trim(),repo:document.getElementById('gh-repo-input').value.trim(),path:document.getElementById('gh-path-input').value.trim()};
+  if(!s.token){setGhStatus('Please enter a token.',true);return;}
+  localStorage.setItem(GITHUB_STORAGE_KEY,JSON.stringify(s));
+  setGhStatus('✓ Settings saved!',false);setTimeout(closeGhModal,1000);
+}
+function setGhStatus(msg,isErr){const el=document.getElementById('gh-modal-status');if(!el)return;el.textContent=msg;el.className='gh-status '+(isErr?'err':'ok');}
+async function pushToGitHub(arrayBuffer){
+  const s=getGhSettings();if(!s||!s.token)return false;
+  const statusEl=document.getElementById('refresh-status');
+  if(statusEl) statusEl.textContent='⏳ Saving to GitHub…';
+  try{
+    const base64=btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const apiUrl='https://api.github.com/repos/'+s.owner+'/'+s.repo+'/contents/'+s.path;
+    let sha='';
+    try{const r=await fetch(apiUrl,{headers:{'Authorization':'token '+s.token,'Accept':'application/vnd.github.v3+json'}});if(r.ok){const d=await r.json();sha=d.sha||'';}}catch(e){}
+    const body={message:'Update schedule via dashboard '+new Date().toISOString(),content:base64};if(sha)body.sha=sha;
+    const pr=await fetch(apiUrl,{method:'PUT',headers:{'Authorization':'token '+s.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!pr.ok){const e=await pr.json();if(statusEl)statusEl.textContent='⚠ GitHub error: '+(e.message||pr.status);return false;}
+    return true;
+  }catch(e){if(statusEl)statusEl.textContent='⚠ Push failed: '+e.message;return false;}
+}
+function handleFileUpload(event){
+  const file=event.target.files[0];if(!file)return;
+  showLoading('Reading Excel file…');
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    const buffer=e.target.result;
+    parseExcel(buffer,file.name);
+    const pushed=await pushToGitHub(buffer);
+    const now=new Date();
+    const rs2=document.getElementById('refresh-status'); if(rs2) rs2.textContent=pushed?'✓ Saved to GitHub · '+now.toLocaleDateString()+' '+now.toLocaleTimeString():'✓ Uploaded '+now.toLocaleDateString()+' '+now.toLocaleTimeString();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+initUI(null);
+// Auto-fetch schedule.xlsx on load
+loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', autoFetchSchedule);
+</script>
+<!-- GITHUB SETTINGS MODAL -->
+<div class="gh-modal-overlay" id="gh-modal-overlay">
+  <div class="gh-modal">
+    <h2>🔗 GitHub Auto-Save Setup</h2>
+    <p>Enter your GitHub Personal Access Token. <strong>Upload any filename</strong> — it saves to GitHub as the destination name below. Token is stored only in your browser.</p>
+    <label>Personal Access Token</label>
+    <input type="password" id="gh-token-input" placeholder="github_pat_...">
+    <label>Repo Owner</label>
+    <input type="text" id="gh-owner-input" value="PMO-Cogsdale">
+    <label>Repo Name</label>
+    <input type="text" id="gh-repo-input" value="ResourceSchedule">
+    <label>File Path in Repo (destination name on GitHub)</label>
+    <input type="text" id="gh-path-input" value="schedule.xlsx">
+    <div class="gh-modal-btns">
+      <button class="gh-btn secondary" onclick="closeGhModal()">Cancel</button>
+      <button class="gh-btn secondary" onclick="clearGhToken()">Clear Token</button>
+      <button class="gh-btn primary" onclick="saveGhSettings()">Save Settings</button>
+    </div>
+    <div class="gh-status" id="gh-modal-status"></div>
+  </div>
+</div>
+</body>
+</html>
